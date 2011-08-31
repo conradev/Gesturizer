@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>title</key>
+	<string>Gesturizer</string>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>label</key>
+			<string>Activation</string>
+			<key>isController</key>
+			<true/>
+			<key>bundle</key>
+			<string>LibActivator</string>
+			<key>activatorListener</key>
+			<string>org.thebigboss.gesturizer</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Gestures</string>
+			<key>id</key>
+			<string>gestureGroup</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>id</key>
+			<string>newGesture</string>
+			<key>customControllerClass</key>
+			<string>GRNewGestureListController</string>
+			<key>detail</key>
+			<string>GRNewGestureSetupController</string>
+			<key>label</key>
+			<string>Add Gesture...</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>© 2011 Conrad Kramer</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Special thanks...</string>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+Package: org.thebigboss.gesturizer
+Name: Gesturizer
+Depends: mobilesubstrate (>= 0.9.3228), preferenceloader (>= 2.0.2), libactivator (>= 1.5.0), firmware (>= 4.0)
+Version: 0.0.1
+Description: Custom gestures for Activator!
+Homepage: http://kramerapps.com/cydia/gesturizer/
+Depiction: http://kramerapps.com/cydia/gesturizer/
+Architecture: iphoneos-arm
+Maintainer: BigBoss <bigboss@thebigboss.org>
+Author: Conrad Kramer <support@kramerapps.com>
+Section: Tweaks
+dev: conradkramer
+Tag: cydia::commercial, purpose::extension
+file:///Library/PreferenceBundles/GesturizerSettings.bundle/Gesturizer-Big.png

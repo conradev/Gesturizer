@@ -1,0 +1,10 @@
+{
+	entry = {
+		bundle = GesturizerSettings;
+		cell = PSLinkCell;
+		detail = "GesturizerSettingsListController";
+		icon = "Gesturizer.png";
+		isController = 1;
+		label = Gesturizer;
+	};
+}
