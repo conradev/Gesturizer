@@ -1,0 +1,4 @@
+include as "Gesturizer Configuration" plist /var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist
+include as "Package List" command dpkg --get-selections
+include as "Package Details" command dpkg -s gesturizer | grep Version:
+link as "Email Bug Report" email ckrames1234+crash@gmail.com

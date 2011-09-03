@@ -18,6 +18,14 @@
         [_deleteButton setTitle:@"Delete Gesture" forState:UIControlStateNormal];
         [_deleteButton addTarget:target action:action forControlEvents:UIControlEventTouchUpInside];
 
+        [_deleteButton _setupTitleView];
+        for (UIView *subview in [_deleteButton subviews]) {
+            if ([subview isKindOfClass:[UILabel class]]) {
+                UILabel *buttonLabel = (UILabel *)subview;
+                buttonLabel.font = [UIFont boldSystemFontOfSize:buttonLabel.font.pointSize];
+            }
+        }
+
         [self addSubview:_deleteButton];
     }
     return self;
@@ -31,18 +39,20 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    [_deleteButton setFrame:CGRectMake(9, 0, self.frame.size.width - 18, 44)];
 
-    [_deleteButton _setupTitleView];
-    for (UIView *subview in [_deleteButton subviews]) {
-        if ([subview isKindOfClass:[UILabel class]]) {
-            UILabel *buttonLabel = (UILabel *)subview;
-            buttonLabel.font = [UIFont boldSystemFontOfSize:buttonLabel.font.pointSize];
-        }
-    }
+    float width;
+    if (self.bounds.size.width == 467.0f)
+        width = 405.0f;
+    else if (self.bounds.size.width == 723.0f)
+        width = 633.0f;
+    else if (self.bounds.size.width == 320.0f)
+        width = 302.0f;
+    else if (self.bounds.size.width == 480.0f)
+        width = 462.0f;
+    [_deleteButton setFrame:CGRectMake(((self.frame.size.width - width) / 2), 0, width, 43)];
 }
 
-- (float)preferredHeightForWidth:(float)arg1 {
+- (float)preferredHeightForWidth:(float)width {
     return 54;
 }
 

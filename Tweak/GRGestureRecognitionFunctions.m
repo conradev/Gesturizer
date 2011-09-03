@@ -2,9 +2,10 @@
 
 int const WTMGlyphMinInflectionPointCount = 10;
 int const GRResolution = 320;
-int const GRResamplePointsCount = 96;
+int const GRResamplePointsCount = 25; // 96
 int const GRStartAngleIndex = 12;
 float const GR1DThreshold = 0.25;
+float const GRAngleSimilarityThreshold = 0.523598776;
 
 float min(float a, float b) {
     return a < b ? a : b;
@@ -15,6 +16,10 @@ float max(float a, float b) {
 }
 
 NSArray* Resample(NSArray *stroke, int num) {
+    if ([stroke count] < 1) {
+        return stroke;
+    }
+
     NSMutableArray *workingStroke = [NSMutableArray arrayWithArray:stroke];
     NSMutableArray *newStroke = [NSMutableArray arrayWithObject:[stroke objectAtIndex:0]];
     float resampledDistance = PathLength(stroke) / (num - 1);

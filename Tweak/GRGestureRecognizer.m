@@ -70,10 +70,12 @@
     for (NSMutableDictionary *gesture in self.gestures) {
         float lowestDistance = FLT_MAX;
         for (NSDictionary *template in [gesture objectForKey:@"templates"]) {
-            float distance = OptimalCosineDistance([template objectForKey:@"vector"], [inputTemplate objectForKey:@"vector"]);
+            //if (AngleBetweenUnitVectors([template objectForKey:@"startUnitVector"], [inputTemplate objectForKey:@"startUnitVector"]) <= GRAngleSimilarityThreshold) {
+                float distance = OptimalCosineDistance([template objectForKey:@"vector"], [inputTemplate objectForKey:@"vector"]);
 
-            if (distance < lowestDistance)
-                lowestDistance = distance;
+                if (distance < lowestDistance)
+                    lowestDistance = distance;
+            //}
         }
         float score = 1 / lowestDistance;
         [gesture setObject:[NSNumber numberWithFloat:score] forKey:@"score"];

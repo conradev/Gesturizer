@@ -1,91 +1,157 @@
 #import "GRGestureController.h"
 
+#import <notify.h>
+
 extern "C" {
     #import "GRGestureRecognitionFunctions.h"
 }
 
-static BOOL PurpleAllocated = NO;
-static uint8_t  touchEvent[sizeof(GSEventRecord) + sizeof(GSHandInfo) + sizeof(GSPathInfo)];
-static mach_port_t (*GSTakePurpleSystemEventPort)(void);
-
-struct GSTouchEvent {
-    GSEventRecord record;
-    GSHandInfo    handInfo;
-};
-
 GRGestureController *sharedInstance;
-
-@interface GRGestureController (Private)
-- (void)sendGSEvent:(GSEventRecord *)eventRecord atLocation:(CGPoint)location;
-@end
-
-
-void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    [[GRGestureController sharedInstance] reloadSettings];
-}
 
 @implementation GRGestureController
 
-@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer;
-
-+ (void)load {
-    MSHookSymbol(GSTakePurpleSystemEventPort, "GSGetPurpleSystemEventPort");
-    if (GSTakePurpleSystemEventPort == NULL) {
-        MSHookSymbol(GSTakePurpleSystemEventPort, "GSCopyPurpleSystemEventPort");
-        PurpleAllocated = YES;
-    }
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)&receivedReloadSettingsNotfication, CFSTR("org.thebigboss.gesturizer.settings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-}
+@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer, settingsDict=_settingsDict;
 
 + (GRGestureController *)sharedInstance {
-    if (!sharedInstance)
+    if (!sharedInstance) {
         sharedInstance = [[[GRGestureController alloc] init] retain];
         [[LAActivator sharedInstance] registerListener:sharedInstance forName:@"org.thebigboss.gesturizer"];
+    }
     return sharedInstance;
 }
 
 - (id)init {
     if ((self = [super init])) {
         windowIsActive = NO;
+        isInitializing = YES;
 
-        CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.uikit"];
-        [messagingCenter registerForMessageName:@"longPress" target:self selector:@selector(handleLongPress:withUserInfo:)];
+        CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
+        [messagingCenter registerForMessageName:@"updateGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
+        [messagingCenter registerForMessageName:@"deleteGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
+        [messagingCenter registerForMessageName:@"returnSettings" target:self selector:@selector(returnSettings:)];
         [messagingCenter runServerOnCurrentThread];
 
-        [self reloadSettings];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(memoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
+
+        _asyncQueue = [[NSOperationQueue alloc] init];
+
+        self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
+        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
+
+        if (!self.gestures) {
+            // DEFAULTS GO HERE
+            self.gestures = [NSMutableDictionary dictionary];
+        }
+        if (!self.settingsDict) {
+            self.settingsDict = [NSMutableDictionary dictionary];
+            [self.settingsDict setObject:self.gestures forKey:@"gestures"];
+        }
+
+        LAActivator *activator = [LAActivator sharedInstance];
+        for (NSString *gestureID in [self.gestures allKeys]) {
+            NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", gestureID];
+            [activator registerEventDataSource:self forEventName:eventName];
+        }
+
+        isInitializing = NO;
+        [self saveChanges];
     }
     return self;
 }
 
 - (void)dealloc {
     self.gestureRecognizer = nil;
-
+    self.window = nil;
+    self.gestures = nil;
+    self.settingsDict = nil;
+    [_asyncQueue cancelAllOperations];
+    [_asyncQueue release];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [super dealloc];
 }
 
-- (void)reloadSettings {
-    LAActivator *activator = [LAActivator sharedInstance];
+- (void)memoryWarning {
+    if ([_asyncQueue operationCount] > 0 || isInitializing) {
+        [_asyncQueue cancelAllOperations];
 
-    for (NSString *gestureID in [self.gestures allKeys]) {
-        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", gestureID];
+        NSError *error = nil;
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        NSString *evilPath = @"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.evil.plist";
+        NSString *regularPath = @"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist";
+
+       if ([fileManager fileExistsAtPath:evilPath]) {
+           NSLog(@"Gesturizer ::: File at evil path exists, removing...");
+           if (![fileManager removeItemAtPath:evilPath error:&error]) {
+                NSLog(@"Gesturizer ::: File at evil path was unable to be removed! Trying to nullify existing one!");
+                if ([[NSDictionary dictionary] writeToFile:regularPath atomically:NO]) {
+                    NSLog(@"Gesturizer ::: Successfully nullified existing settings file!");
+                    NSLog(@"Gesturizer ::: Safety operations were a success!");
+                    notify_post("org.thebigboss.gesturizer.settings");
+                    return;
+                } else {
+                    NSLog(@"Gesturizer ::: Existing settings file cannot be nullified!");
+                    NSLog(@"Gesturizer ::: FATAL ERROR: IF YOU ARE READING THIS, EMAIL support@kramerapps.com ASAP FOR ASSISTANCE.");
+                }
+            } else {
+                NSLog(@"Gesturizer ::: File at evil path successfully removed!");
+            }
+        }
+        if ([[NSFileManager defaultManager] moveItemAtPath:regularPath toPath:evilPath error:&error]) {
+            NSLog(@"Gesturizer ::: Successfully quarantined config file!");
+            NSLog(@"Gesturizer ::: Safety operations were a success!");
+            notify_post("org.thebigboss.gesturizer.settings");
+            return;
+        } else {
+            NSLog(@"Gesturizer ::: Could not quarantine config file!");
+            if ([[NSDictionary dictionary] writeToFile:regularPath atomically:NO]) {
+                NSLog(@"Gesturizer ::: Successfully nullified existing settings file!");
+                NSLog(@"Gesturizer ::: Safety operations were a success!");
+                notify_post("org.thebigboss.gesturizer.settings");
+                return;
+            } else {
+                NSLog(@"Gesturizer ::: Existing settings file cannot be nullified!");
+                NSLog(@"Gesturizer ::: FATAL ERROR: IF YOU ARE READING THIS, EMAIL support@kramerapps.com ASAP FOR ASSISTANCE.");
+            }
+        }
+    }
+}
+
+#pragma mark -
+#pragma mark Settings
+
+- (NSDictionary *)returnSettings:(NSString *)name {
+    return self.settingsDict;
+}
+
+- (void)gestureChangeWithName:(NSString *)name gesture:(NSDictionary *)gesture {
+    gesture = [NSMutableDictionary dictionaryWithDictionary:gesture];
+    LAActivator *activator = [LAActivator sharedInstance];
+    if ([name isEqualToString:@"updateGesture"]) {
+        [self.gestures setObject:gesture forKey:[gesture objectForKey:@"id"]];
+        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
+        [activator unregisterEventDataSourceWithEventName:eventName];
+        [activator registerEventDataSource:self forEventName:eventName];
+    } else if ([name isEqualToString:@"deleteGesture"]) {
+        [self.gestures removeObjectForKey:[gesture objectForKey:@"id"]];
+        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
         [activator unregisterEventDataSourceWithEventName:eventName];
     }
 
-    self.gestures = nil;
+    [self saveChanges];
+}
 
-    NSDictionary *settingsDict = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-    for (NSString *key in [settingsDict allKeys]) {
-        if ([key isEqualToString:@"gestures"]) {
-            self.gestures = [settingsDict objectForKey:key];
-        }
-    }
+- (void)saveChanges {
+    NSInvocationOperation *saveChangesOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(saveChangesOperation) object:nil];
+    [_asyncQueue addOperation:saveChangesOperation];
+    [saveChangesOperation release];
+}
 
-    for (NSString *gestureID in [self.gestures allKeys]) {
-        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", gestureID];
-        [activator registerEventDataSource:self forEventName:eventName];
-    }
-
+- (void)saveChangesOperation {
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     [self createTemplates];
+    [self.settingsDict setObject:self.gestures forKey:@"gestures"];
+    [self.settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
+    [pool release];
 }
 
 #pragma mark -
@@ -142,8 +208,31 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
     NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
     self.gestureRecognizer.sortedResults = nil;
 
-    [self executeActionForGesture:gesture];
     [self deactivateWindow];
+    [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.4f];
+}
+
+- (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture {
+    NSString *action = [gesture objectForKey:@"action"];
+    if ([action isEqualToString:@"activator"]) {
+        LAActivator *activator = [LAActivator sharedInstance];
+
+        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
+        LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:[activator currentEventMode]];
+        gestureEvent.handled = NO;
+
+        if ( [activator assignedListenerNameForEvent:gestureEvent]) {
+            return YES;
+        }
+    } else if ([action isEqualToString:@"url"]) {
+        NSURL *url = [NSURL URLWithString:[gesture objectForKey:@"url"]];
+        SpringBoard *springboard = [objc_getClass("SpringBoard") sharedApplication];
+        if ([springboard applicationCanOpenURL:url publicURLsOnly:NO]) {
+            return YES;
+        }
+    }
+
+    return NO;
 }
 
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture {
@@ -185,57 +274,55 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
 
 - (void)createTemplates {
     for (NSMutableDictionary *gesture in [self.gestures allValues]) {
-        if (![gesture objectForKey:@"templates"]) {
-            NSArray *strokes = [gesture objectForKey:@"strokes"];
-            int amountOfStrokes = [strokes count];
+        if ([gesture objectForKey:@"strokes"]) {
+            if (![gesture objectForKey:@"templates"]) {
+                NSArray *strokes = [gesture objectForKey:@"strokes"];
+                int amountOfStrokes = [strokes count];
 
-            oneSuchOrdering = [[NSMutableArray alloc] init];
-            for (int i=0; i < amountOfStrokes; i++) {
-                [oneSuchOrdering addObject:[NSNumber numberWithInt:i]];
-            }
-
-            // Permute the n! stroke orderings
-            permutedStrokeOrderings = [[NSMutableArray alloc] init];
-            [self permuteStrokeOrderings:amountOfStrokes];
-            [oneSuchOrdering release];
-
-            // Generate the n! * 2^n possible unistroke permutations
-            NSMutableArray *unistrokes = [NSMutableArray array];
-            for (NSArray *oneOrdering in permutedStrokeOrderings) {
-                for (int x = 0; x < pow(2, amountOfStrokes); x++) {
-                    NSMutableArray *unistroke = [NSMutableArray array];
-                    for (int y = 0; y < amountOfStrokes; y++) {
-                        NSArray *stroke = [strokes objectAtIndex:[[oneOrdering objectAtIndex:y] intValue]];
-
-                        if (((x >> y) & 1) == 1) {
-                            stroke = [[stroke reverseObjectEnumerator] allObjects];
-                        }
-
-                        [unistroke addObjectsFromArray:stroke];
-                    }
-                    [unistrokes addObject:unistroke];
+                oneSuchOrdering = [[NSMutableArray alloc] init];
+                for (int i=0; i < amountOfStrokes; i++) {
+                    [oneSuchOrdering addObject:[NSNumber numberWithInt:i]];
                 }
+
+                // Permute the n! stroke orderings
+                permutedStrokeOrderings = [[NSMutableArray alloc] init];
+                [self permuteStrokeOrderings:amountOfStrokes];
+                [oneSuchOrdering release];
+
+                // Generate the n! * 2^n possible unistroke permutations
+                NSMutableArray *unistrokes = [NSMutableArray array];
+                for (NSArray *oneOrdering in permutedStrokeOrderings) {
+                    for (int x = 0; x < pow(2, amountOfStrokes); x++) {
+                        NSMutableArray *unistroke = [NSMutableArray array];
+                        for (int y = 0; y < amountOfStrokes; y++) {
+                            NSArray *stroke = [strokes objectAtIndex:[[oneOrdering objectAtIndex:y] intValue]];
+
+                            if (((x >> y) & 1) == 1) {
+                                stroke = [[stroke reverseObjectEnumerator] allObjects];
+                            }
+
+                            [unistroke addObjectsFromArray:stroke];
+                        }
+                        [unistrokes addObject:unistroke];
+                    }
+                }
+                [permutedStrokeOrderings release];
+
+                // Normalization procedure
+                NSMutableArray *templates = [NSMutableArray array];
+                for (NSArray *unistroke in unistrokes) {
+                    NSMutableArray *normalizedPoints = [NSMutableArray arrayWithArray:TranslateToOrigin(Scale(Resample(unistroke, GRResamplePointsCount), GRResolution, GR1DThreshold))];
+                    NSDictionary *startUnitVector = CalcStartUnitVector(normalizedPoints, GRStartAngleIndex);
+                    NSMutableArray *vector = [NSMutableArray arrayWithArray:Vectorize(normalizedPoints)];
+
+                    NSMutableDictionary *theTemplate = [NSMutableDictionary dictionaryWithObjectsAndKeys:startUnitVector, @"startUnitVector", vector, @"vector", nil];
+                    [templates addObject:theTemplate];
+                }
+
+                [gesture setObject:templates forKey:@"templates"];
             }
-            [permutedStrokeOrderings release];
-
-            // Normalization procedure
-            NSMutableArray *templates = [NSMutableArray array];
-            for (NSArray *unistroke in unistrokes) {
-                NSMutableArray *normalizedPoints = [NSMutableArray arrayWithArray:TranslateToOrigin(Scale(Resample(unistroke, GRResamplePointsCount), GRResolution, GR1DThreshold))];
-                NSDictionary *startUnitVector = CalcStartUnitVector(normalizedPoints, GRStartAngleIndex);
-                NSMutableArray *vector = [NSMutableArray arrayWithArray:Vectorize(normalizedPoints)];
-
-                NSMutableDictionary *theTemplate = [NSMutableDictionary dictionaryWithObjectsAndKeys:startUnitVector, @"startUnitVector", vector, @"vector", nil];
-                [templates addObject:theTemplate];
-            }
-
-            [gesture setObject:templates forKey:@"templates"];
         }
     }
-
-    NSMutableDictionary *settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-    [settingsDict setObject:self.gestures forKey:@"gestures"];
-    [settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
 }
 
 - (void)permuteStrokeOrderings:(int)count {
@@ -280,19 +367,12 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
     }
 }
 
-- (void)handleLongPress:(NSString *)name withUserInfo:(NSDictionary *)userinfo {
-    CGPoint touchPoint = CGPointMake([[userinfo objectForKey:@"x"] floatValue], [[userinfo objectForKey:@"y"] floatValue]);
-    int pathIndex = [[userinfo objectForKey:@"pathIndex"] intValue];
-    if (!windowIsActive) {
-        [self activateWindow];
-        [self sendMouseRefocusAtLocation:touchPoint withPathIndex:pathIndex];
-    }
-}
-
 - (void)activateWindow {
     LAActivator *activator = [LAActivator sharedInstance];
     if ([[activator currentEventMode] isEqualToString:@"lockscreen"])
         return;
+
+    [_asyncQueue waitUntilAllOperationsAreFinished];
 
     int gestureCount = 0;
     for (NSDictionary *gesture in [self.gestures allValues]) {
@@ -337,85 +417,6 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
         }];
         [prevKeyWindow makeKeyAndVisible];
         windowIsActive = NO;
-    }
-}
-
-#pragma mark -
-#pragma mark Event Injection
-
-- (void)sendMouseRefocusAtLocation:(CGPoint)virtualLocation withPathIndex:(int)pathIndex {
-
-    CGPoint location;
-    CGSize screenSize = [[UIScreen mainScreen] bounds].size;
-    UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
-
-    // Convert window location to absolute location
-    if (orientation == UIInterfaceOrientationLandscapeLeft) {
-        location.x = virtualLocation.y;
-        location.y = (screenSize.height - virtualLocation.x);
-    } else if (orientation == UIInterfaceOrientationLandscapeRight) {
-        location.x = (screenSize.width - virtualLocation.y);
-        location.y = virtualLocation.x;
-    } else if (orientation == UIInterfaceOrientationPortraitUpsideDown) {
-        location.x = (screenSize.width - virtualLocation.x);
-        location.y = (screenSize.height - virtualLocation.y);
-    } else {
-        location = virtualLocation;
-    }
-
-    GSTouchEvent* event = (GSTouchEvent*)&touchEvent;
-    bzero(touchEvent, sizeof(touchEvent));
-
-    event->record.type = kGSEventHand;
-    event->record.windowLocation = location;
-    event->record.timestamp = GSCurrentEventTimestamp();
-    event->record.infoSize = sizeof(GSHandInfo) + sizeof(GSPathInfo);
-    event->handInfo.type = kGSHandInfoTypeTouchUp;
-    event->handInfo.pathInfosCount = 1;
-    bzero(&event->handInfo.pathInfos[0], sizeof(GSPathInfo));
-    event->handInfo.pathInfos[0].pathIndex     = pathIndex;
-    event->handInfo.pathInfos[0].pathIdentity  = 2;
-    event->handInfo.pathInfos[0].pathProximity = 0x00;
-    event->handInfo.pathInfos[0].pathLocation  = location;
-
-    [self sendGSEvent:(GSEventRecord*)event atLocation:location];
-
-    event->handInfo.type = kGSHandInfoTypeTouchDown;
-    event->handInfo.pathInfos[0].pathProximity = 0x03;
-
-    [self sendGSEvent:(GSEventRecord*)event atLocation:location];
-}
-
-- (void)sendGSEvent:(GSEventRecord *)eventRecord atLocation:(CGPoint)location {
-    mach_port_t port(0);
-    mach_port_t purple(0);
-
-    // Attempts to get the event port of the currently open application
-    CAWindowServer *server;
-    if ((server = [CAWindowServer serverIfRunning])) {
-        NSArray *displays([server displays]);
-        if (displays != nil && [displays count] != 0) {
-            CAWindowServerDisplay *display;
-            if ((display = [displays objectAtIndex:0])) {
-                port = [display clientPortAtPosition:location];
-            }
-        }
-    }
-
-    // If it fails, it gets SpringBoard's Purple system event port
-    if (!port) {
-        if (!purple) {
-            purple = (*GSTakePurpleSystemEventPort)();
-        }
-        port = purple;
-    }
-
-    if (port) {
-        GSSendEvent(eventRecord, port);
-    }
-
-    if (purple && PurpleAllocated){
-        mach_port_deallocate(mach_task_self(), purple);
     }
 }
 

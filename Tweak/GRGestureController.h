@@ -1,15 +1,9 @@
-#import <GraphicsServices/GraphicsServices.h>
 #import <AppSupport/AppSupport.h>
-#import <QuartzCore/CAWindowServer.h>
-#import <QuartzCore/CAWindowServerDisplay.h>
 #import <SpringBoard/SpringBoard.h>
 
 #import <libactivator/libactivator.h>
 
-#include <mach/mach_port.h>
-#include <mach/mach_init.h>
-#include <substrate.h>
-#include <dlfcn.h>
+#import <objc/runtime.h>
 
 #import "GRWindow.h"
 #import "GRGestureRecognizer.h"
@@ -24,12 +18,17 @@
     NSMutableArray *oneSuchOrdering;
     NSMutableArray *permutedStrokeOrderings;
 
-    NSDictionary *_gestures;
+    NSMutableDictionary *_gestures;
+    NSMutableDictionary *_settingsDict;
+
+    NSOperationQueue *_asyncQueue;
+    BOOL isInitializing;
 }
 
 @property (nonatomic, retain) GRWindow *window;
 @property (nonatomic, retain) GRGestureRecognizer *gestureRecognizer;
-@property (nonatomic, retain) NSDictionary *gestures;
+@property (nonatomic, retain) NSMutableDictionary *settingsDict;
+@property (nonatomic, retain) NSMutableDictionary *gestures;
 
 + (GRGestureController *)sharedInstance;
 
@@ -38,11 +37,13 @@
 - (void)activateWindow;
 - (void)deactivateWindow;
 
+- (void)saveChanges;
+- (void)memoryWarning;
+
 - (void)permuteStrokeOrderings:(int)count;
 - (void)createTemplates;
 
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture;
-- (void)reloadSettings;
-- (void)sendMouseRefocusAtLocation:(CGPoint)virtualLocation withPathIndex:(int)pathIndex;
+- (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture;
 
 @end

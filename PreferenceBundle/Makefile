@@ -1,11 +1,11 @@
 include theos/makefiles/common.mk
 
 BUNDLE_NAME = GesturizerSettings
-GesturizerSettings_FILES = GRRootListController.m GRGestureDetailListController.m GRNewGestureListController.m GRNewGestureSetupController.m GRPressDetailListController.m GRConfigureActivatorController.m GRPaintView.m GRGestureRecordingView.m GRGestureRecordingViewController.m GRDeleteButtonView.m
+GesturizerSettings_FILES = GRRootListController.m GRGestureDetailListController.m GRNewGestureListController.m GRNewGestureSetupController.m GRConfigureActivatorController.m GRPaintView.m GRGestureRecordingView.m GRGestureRecordingViewController.m GRDeleteButtonView.m GRWebSettingsController.m
 GesturizerSettings_LDFLAGS = -lactivator -L/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.0.sdk/usr/lib/gcc/arm-apple-darwin10/4.2.1/
 GesturizerSettings_INSTALL_PATH = /Library/PreferenceBundles
-GesturizerSettings_FRAMEWORKS = UIKit OpenGLES CoreGraphics QuartzCore
-GesturizerSettings_PRIVATE_FRAMEWORKS = Preferences
+GesturizerSettings_FRAMEWORKS = UIKit OpenGLES CoreGraphics QuartzCore MessageUI
+GesturizerSettings_PRIVATE_FRAMEWORKS = Preferences AppSupport
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 

@@ -6,6 +6,7 @@ extern int const GRResolution;
 extern int const GRResamplePointsCount;
 extern int const GRStartAngleIndex;
 extern float const GR1DThreshold;
+extern float const GRAngleSimilarityThreshold;
 
 float Distance(CGPoint pointOne, CGPoint pointTwo);
 CGRect BoundingBox(NSArray *stroke);

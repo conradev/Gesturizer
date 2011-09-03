@@ -1,7 +1,5 @@
 #import "GRGestureRecordingView.h"
 
-int const GRMaxTouchesPerStroke = 75;
-
 @implementation GRGestureRecordingView
 
 @synthesize delegate=_delegate;
@@ -17,7 +15,7 @@ int const GRMaxTouchesPerStroke = 75;
 
 - (void)dealloc {
     [strokes release];
-
+    self.delegate = nil;
     [super dealloc];
 }
 
@@ -53,18 +51,11 @@ int const GRMaxTouchesPerStroke = 75;
     NSDictionary *touch = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
     [currentStroke addObject:touch];
 
-    if ([currentStroke count] > GRMaxTouchesPerStroke) {
-        NSLog(@"CBK ::: REDUCING STROKE OF %i POINTS TO MAX OF %i", [currentStroke count], GRMaxTouchesPerStroke);
-        [currentStroke removeObjectsInRange:NSMakeRange(GRMaxTouchesPerStroke, [currentStroke count] - GRMaxTouchesPerStroke)];
-    } else {
-        NSLog(@"CBK ::: CURRENT STROKE HAS %i POINTS", [currentStroke count]);
-    }
-
     [strokes addObject:currentStroke];
     [currentStroke release];
     currentStroke = nil;
 
-    if ([strokes count] >= 7) {
+    if ([strokes count] >= 4) {
         [self doneDetectingStrokes];
         return;
     }

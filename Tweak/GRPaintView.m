@@ -79,10 +79,18 @@
 	GLubyte			*brushData;
 	size_t			width, height;
 
+    float scale = 1.0f;
+    UIScreen *mainScreen = [UIScreen mainScreen];
+    if ([mainScreen respondsToSelector:@selector(scale)]) {
+        scale = [mainScreen scale];
+    }
+
     if ((self = [super initWithFrame:frame])) {
 		self.multipleTouchEnabled = NO;
 
         CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
+
+	    eaglLayer.contentsScale = scale;
 
 		eaglLayer.opaque = YES;
 		// In this application, we want to retain the EAGLDrawable contents after a call to presentRenderbuffer.
@@ -96,7 +104,12 @@
 			return nil;
 		}
 
-		brushImage = [UIImage imageWithContentsOfFile:@"/Library/Application Support/Gesturizer/Particle.png"].CGImage;
+        NSString *imagePath = @"/Library/Application Support/Gesturizer/Particle.png";
+        if (scale >= 2.0) {
+            imagePath = [NSString stringWithFormat:@"%@@2x.%@", [imagePath stringByDeletingPathExtension], [imagePath pathExtension]];
+        }
+
+		brushImage = [UIImage imageWithContentsOfFile:imagePath].CGImage;
 
 		// Get the width and height of the image
 		width = CGImageGetWidth(brushImage);
@@ -127,8 +140,7 @@
             free(brushData);
 		}
 
-		// Set the view's scale factor
-		self.contentScaleFactor = 1.0;
+		self.contentScaleFactor = scale;
 
 		// Setup OpenGL states
 		glMatrixMode(GL_PROJECTION);
@@ -189,7 +201,6 @@
 
 	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_WIDTH_OES, &backingWidth);
 	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_HEIGHT_OES, &backingHeight);
-    NSLog(@"PAINT VIEW RENDERBUFFER WIDTH: %i HEIGHT: %i", backingWidth, backingHeight);
 
 	// For this sample, we also need a depth buffer, so we'll create and attach one via another renderbuffer.
 	glGenRenderbuffersOES(1, &depthRenderbuffer);
@@ -199,7 +210,7 @@
 
 	if(glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES)
 	{
-		NSLog(@"failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+		NSLog(@"Gesturizer ::: Failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
 		return NO;
 	}
 

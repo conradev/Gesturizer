@@ -13,7 +13,7 @@
 
 - (void)dealloc {
     [recordingView release];
-
+    self.delegate = nil;
     [super dealloc];
 }
 
@@ -27,10 +27,15 @@
     [super viewWillDisappear:animated];
 }
 
+-(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+    return YES;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-
+    self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     recordingView = [[GRGestureRecordingView alloc] initWithFrame:self.view.frame];
+    recordingView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     recordingView.delegate = self.delegate;
     [self.view addSubview:recordingView];
 }

@@ -2,7 +2,6 @@
 #import "GRConfigureActivatorController.h"
 
 #import <libactivator/libactivator.h>
-#import <notify.h>
 
 @implementation GRGestureDetailListController
 
@@ -53,26 +52,23 @@
 }
 
 - (void)setSpecifier:(PSSpecifier *)specifier {
-    NSString *gestureID = [specifier propertyForKey:@"gestureID"];
-    if (gestureID) {
-        NSDictionary *settingsDict = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-        NSDictionary *gesturesDict = [settingsDict objectForKey:@"gestures"];
-        self.gesture = [NSMutableDictionary dictionaryWithDictionary:[gesturesDict objectForKey:gestureID]];
+    NSString *gesture = [specifier propertyForKey:@"gesture"];
+    if (gesture) {
+        self.gesture = gesture;
     } else {
         CFUUIDRef uuid =  CFUUIDCreate(NULL);
-        gestureID = [(NSString *)CFUUIDCreateString(NULL, uuid) autorelease];
+        NSString *gestureID = [(NSString *)CFUUIDCreateString(NULL, uuid) autorelease];
         CFRelease(uuid);
 
-        // FURTHER INITIALIZATION
         NSMutableDictionary *gestureDict = [NSMutableDictionary dictionary];
         [gestureDict setObject:@"" forKey:@"name"];
         [gestureDict setObject:@"" forKey:@"url"];
         [gestureDict setObject:@"activator" forKey:@"action"];
         [gestureDict setObject:gestureID forKey:@"id"];
         self.gesture = gestureDict;
-    }
 
-    [self saveChanges];
+        [self saveChanges];
+    }
 
 	[super setSpecifier:specifier];
 }
@@ -117,11 +113,16 @@
 }
 
 - (NSString *)getActionValue:(PSSpecifier *)spec {
-
     return [self.gesture objectForKey:@"action"];
 }
 
 - (void)recordGesture:(PSSpecifier *)spec {
+    for (UITableCell *cell in [_cells allValues]) {
+        if ([cell respondsToSelector:@selector(resignFirstResponder)]) {
+            [cell resignFirstResponder];
+        }
+    }
+
     GRGestureRecordingViewController *gestureRecorder = [[GRGestureRecordingViewController alloc] initWithDelegate:self];
     gestureRecorder.wantsFullScreenLayout = YES;
     gestureRecorder.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
@@ -144,31 +145,31 @@
 }
 
 - (void)confirmDelete {
-    UIActionSheet *confirmSheet = [[UIActionSheet alloc] initWithTitle:nil delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete Gesture" otherButtonTitles:nil];
-    [confirmSheet showInView:self.view];
-    [confirmSheet release];
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        UIAlertView *confirmAlert = [[UIAlertView alloc] initWithTitle:@"Delete Gesture" message:@"Are you sure you want to delete this gesture?" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Delete", nil];
+        [confirmAlert show];
+        [confirmAlert release];
+    } else {
+        UIActionSheet *confirmSheet = [[UIActionSheet alloc] initWithTitle:nil delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete Gesture" otherButtonTitles:nil];
+        [confirmSheet showInView:self.view];
+        [confirmSheet release];
+    }
 }
 
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
-    if (buttonIndex == actionSheet.destructiveButtonIndex) {
+    if (actionSheet.destructiveButtonIndex == buttonIndex) {
+        [self deleteGesture];
+    }
+}
+
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+    if (alertView.firstOtherButtonIndex == buttonIndex) {
         [self deleteGesture];
     }
 }
 
 - (void)deleteGesture {
-    NSMutableDictionary *settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-    NSMutableDictionary *gesturesDict = [NSMutableDictionary dictionaryWithDictionary:[settingsDict objectForKey:@"gestures"]];
-    if (self.gesture) {
-        if ([self.gesture objectForKey:@"id"]) {
-            [gesturesDict removeObjectForKey:[self.gesture objectForKey:@"id"]];
-        }
-    }
-    self.gesture = nil;
-    [settingsDict setObject:gesturesDict forKey:@"gestures"];
-    [settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
-
-    notify_post("org.thebigboss.gesturizer.settings");
-
+    [[GRRootListController sharedInstance] deleteGesture:self.gesture];
     [self close];
 }
 
@@ -179,20 +180,7 @@
 }
 
 - (void)saveChanges {
-    NSMutableDictionary *settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-    NSMutableDictionary *gesturesDict = [NSMutableDictionary dictionaryWithDictionary:[settingsDict objectForKey:@"gestures"]];
-    if (!settingsDict) {
-        settingsDict = [NSMutableDictionary dictionary];
-    }
-    if (!gesturesDict) {
-        gesturesDict = [NSMutableDictionary dictionary];
-    }
-
-    [gesturesDict setObject:self.gesture forKey:[self.gesture objectForKey:@"id"]];
-    [settingsDict setObject:gesturesDict forKey:@"gestures"];
-    [settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
-
-    notify_post("org.thebigboss.gesturizer.settings");
+    [[GRRootListController sharedInstance] updateGesture:self.gesture];
 }
 
 - (void)close {

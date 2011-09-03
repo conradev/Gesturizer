@@ -1,8 +1,9 @@
 #import <Preferences/Preferences.h>
 
 #import "GRGestureRecordingViewController.h"
+#import "GRRootListController.h"
 
-@interface GRGestureDetailListController : PSListController <GRGestureRecordingDelegate, UIActionSheetDelegate> {
+@interface GRGestureDetailListController : PSListController <GRGestureRecordingDelegate, UIActionSheetDelegate, UIAlertViewDelegate> {
     NSMutableDictionary *_gesture;
 
     PSSpecifier *_urlField;

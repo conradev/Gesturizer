@@ -1,18 +1,13 @@
 #import "GRRootListController.h"
-
 #import "GRGestureDetailListController.h"
+
+#import <notify.h>
 
 GRRootListController *sharedInstance = nil;
 
-void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    [[GRRootListController sharedInstance] reloadGestures];
-}
-
 @implementation GRRootListController
 
-+ (void)load {
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)&receivedReloadSettingsNotfication, CFSTR("org.thebigboss.gesturizer.settings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-}
+@synthesize gestures=_gestures;
 
 + (id)sharedInstance {
     return sharedInstance;
@@ -21,12 +16,16 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
 - (id)init {
     if ((self = [super init])) {
         sharedInstance = self;
+        CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
+        NSDictionary *settingsDict = [messagingCenter sendMessageAndReceiveReplyName:@"returnSettings" userInfo:nil];
+        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[settingsDict objectForKey:@"gestures"]];
     }
     return self;
 }
 
 - (void)dealloc {
     sharedInstance = nil;
+    self.gestures = nil;
     [super dealloc];
 }
 
@@ -35,17 +34,11 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
 		NSMutableArray *mutSpecs = [NSMutableArray arrayWithArray:[self loadSpecifiersFromPlistName:@"RootListController" target:self]];
         NSMutableArray *mutGestureSpecs = [NSMutableArray array];
 
-        NSDictionary *settingsDict = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-        NSDictionary *gestures = [settingsDict objectForKey:@"gestures"];
-
-        for (NSString *gestureID in [gestures allKeys]) {
-            NSDictionary *gesture = [gestures objectForKey:gestureID];
-            if (gesture) {
-                PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:Nil];
-                if (gestureSpecifier) {
-                    [gestureSpecifier setProperty:gestureID forKey:@"gestureID"];
-                    [mutGestureSpecs addObject:gestureSpecifier];
-                }
+        for (NSDictionary *gesture in [self.gestures allValues]) {
+            PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:Nil];
+            if (gestureSpecifier) {
+                [gestureSpecifier setProperty:gesture forKey:@"gesture"];
+                [mutGestureSpecs addObject:gestureSpecifier];
             }
         }
 
@@ -68,32 +61,41 @@ void receivedReloadSettingsNotfication  (CFNotificationCenterRef center, void *o
     return _specifiers;
 }
 
-- (void)reloadGestures {
-    NSMutableArray *newGestures = [NSMutableArray array];
+- (void)deleteGesture:(NSDictionary *)gesture {
+    [self.gestures removeObjectForKey:[gesture objectForKey:@"id"]];
+    CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
+    [messagingCenter sendMessageName:@"deleteGesture" userInfo:gesture];
+    [self reloadSpecifiers];
+}
 
-    NSDictionary *settingsDict = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-    NSDictionary *gestures = [settingsDict objectForKey:@"gestures"];
+- (void)updateGesture:(NSDictionary *)gesture {
+    [self.gestures setObject:gesture forKey:[gesture objectForKey:@"id"]];
+    CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
+    [messagingCenter sendMessageName:@"updateGesture" userInfo:gesture];
+    [self reloadSpecifiers];
+}
 
-    for (NSString *gestureID in [gestures allKeys]) {
-        NSDictionary *gesture = [gestures objectForKey:gestureID];
-        if (gesture) {
-            PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:Nil];
-            if (gestureSpecifier) {
-                [gestureSpecifier setProperty:gestureID forKey:@"gestureID"];
-                [newGestures addObject:gestureSpecifier];
-            }
+- (void)reloadSpecifiers {
+    NSMutableArray *newSpecifiers = [NSMutableArray array];
+
+    for (NSDictionary *gesture in [self.gestures allValues]) {
+        PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:Nil];
+        if (gestureSpecifier) {
+            [gestureSpecifier setProperty:gesture forKey:@"gesture"];
+            [newSpecifiers addObject:gestureSpecifier];
         }
     }
 
-    if ([gestureSpecifiers count] > 0 && [newGestures count] > 0) {
-        [self replaceContiguousSpecifiers:gestureSpecifiers withSpecifiers:newGestures];
+    if ([gestureSpecifiers count] > 0 && [newSpecifiers count] > 0) {
+        [self replaceContiguousSpecifiers:gestureSpecifiers withSpecifiers:newSpecifiers];
     } else if ([gestureSpecifiers count] > 0) {
         [self removeContiguousSpecifiers:gestureSpecifiers];
-    } else if ([newGestures count] > 0) {
-        [self insertContiguousSpecifiers:newGestures afterSpecifierID:@"gestureGroup"];
+    } else if ([newSpecifiers count] > 0) {
+        [self insertContiguousSpecifiers:newSpecifiers afterSpecifierID:@"gestureGroup"];
     }
 
-    gestureSpecifiers = [newGestures copy];
+    [gestureSpecifiers release];
+    gestureSpecifiers = [newSpecifiers copy];
 }
 
 @end
