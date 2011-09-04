@@ -26,10 +26,10 @@
             }
         }
 
-        if (![self.gesture objectForKey:@"strokes"]) {
-            [mutSpecs removeObject:_changeGesture];
-        } else {
+        if ([self.gesture objectForKey:@"strokes"] || [self.gesture objectForKey:@"templates"]) {
             [mutSpecs removeObject:_recordGesture];
+        } else {
+            [mutSpecs removeObject:_changeGesture];
         }
 
         NSString *action = [self.gesture objectForKey:@"action"];
@@ -52,9 +52,9 @@
 }
 
 - (void)setSpecifier:(PSSpecifier *)specifier {
-    NSString *gesture = [specifier propertyForKey:@"gesture"];
+    NSMutableDictionary *gesture = [specifier propertyForKey:@"gesture"];
     if (gesture) {
-        self.gesture = gesture;
+        self.gesture = [NSMutableDictionary dictionaryWithDictionary:gesture];
     } else {
         CFUUIDRef uuid =  CFUUIDCreate(NULL);
         NSString *gestureID = [(NSString *)CFUUIDCreateString(NULL, uuid) autorelease];

@@ -35,22 +35,32 @@ GRGestureController *sharedInstance;
 
         _asyncQueue = [[NSOperationQueue alloc] init];
 
+        BOOL isDefault = NO;
         self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
-        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
-
-        if (!self.gestures) {
-            // DEFAULTS GO HERE
-            self.gestures = [NSMutableDictionary dictionary];
-        }
         if (!self.settingsDict) {
-            self.settingsDict = [NSMutableDictionary dictionary];
-            [self.settingsDict setObject:self.gestures forKey:@"gestures"];
+            isDefault = YES;
+            self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/Library/PreferenceBundles/GesturizerSettings.bundle/org.thebigboss.gesturizer.default.plist"];
         }
+        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
 
         LAActivator *activator = [LAActivator sharedInstance];
         for (NSString *gestureID in [self.gestures allKeys]) {
             NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", gestureID];
             [activator registerEventDataSource:self forEventName:eventName];
+            if (isDefault) {
+                NSString *listenerName = nil;
+                if ([gestureID isEqualToString:@"2D3944CB-022D-46CB-A85D-980C9C582A3A"]) {
+                    listenerName = @"libactivator.system.spotlight";
+                } else if ([gestureID isEqualToString:@"E510A6D8-7C03-49C2-94D8-66CA73F7F744"]) {
+                    listenerName = @"libactivator.ipod.music-controls";
+                }
+
+                for (NSString *mode in [activator availableEventModes]) {
+                    LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:mode];
+                    gestureEvent.handled = NO;
+                    [activator assignEvent:gestureEvent toListenerWithName:listenerName];
+                }
+            }
         }
 
         isInitializing = NO;
@@ -123,27 +133,56 @@ GRGestureController *sharedInstance;
     return self.settingsDict;
 }
 
-- (void)gestureChangeWithName:(NSString *)name gesture:(NSDictionary *)gesture {
-    gesture = [NSMutableDictionary dictionaryWithDictionary:gesture];
-    LAActivator *activator = [LAActivator sharedInstance];
-    if ([name isEqualToString:@"updateGesture"]) {
-        [self.gestures setObject:gesture forKey:[gesture objectForKey:@"id"]];
-        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
-        [activator unregisterEventDataSourceWithEventName:eventName];
-        [activator registerEventDataSource:self forEventName:eventName];
-    } else if ([name isEqualToString:@"deleteGesture"]) {
-        [self.gestures removeObjectForKey:[gesture objectForKey:@"id"]];
-        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
-        [activator unregisterEventDataSourceWithEventName:eventName];
-    }
+- (void)gestureChangeWithName:(NSString *)name gesture:(NSDictionary *)theGesture {
+    NSMutableDictionary *gesture = [NSMutableDictionary dictionaryWithDictionary:theGesture];
 
-    [self saveChanges];
+    if ([name isEqualToString:@"updateGesture"]) {
+        [self updateGesture:gesture];
+    } else if ([name isEqualToString:@"deleteGesture"]) {
+        [self deleteGesture:gesture];
+    }
+}
+
+- (void)deleteGesture:(NSMutableDictionary *)gesture {
+    NSInvocationOperation *deleteGestureOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(deleteGestureOperation:) object:gesture];
+    [_asyncQueue addOperation:deleteGestureOperation];
+    [deleteGestureOperation release];
+}
+
+- (void)updateGesture:(NSMutableDictionary *)gesture {
+    NSInvocationOperation *updateGestureOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(updateGestureOperation:) object:gesture];
+    [_asyncQueue addOperation:updateGestureOperation];
+    [updateGestureOperation release];
 }
 
 - (void)saveChanges {
     NSInvocationOperation *saveChangesOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(saveChangesOperation) object:nil];
     [_asyncQueue addOperation:saveChangesOperation];
     [saveChangesOperation release];
+}
+
+- (void)deleteGestureOperation:(NSDictionary *)gesture {
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    [self.gestures removeObjectForKey:[gesture objectForKey:@"id"]];
+    NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
+    LAActivator *activator = [LAActivator sharedInstance];
+    [activator unregisterEventDataSourceWithEventName:eventName];
+    [self.settingsDict setObject:self.gestures forKey:@"gestures"];
+    [self.settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
+    [pool release];
+}
+
+- (void)updateGestureOperation:(NSDictionary *)gesture {
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    [self.gestures setObject:gesture forKey:[gesture objectForKey:@"id"]];
+    NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
+    LAActivator *activator = [LAActivator sharedInstance];
+    [activator unregisterEventDataSourceWithEventName:eventName];
+    [activator registerEventDataSource:self forEventName:eventName];
+    [self createTemplates];
+    [self.settingsDict setObject:self.gestures forKey:@"gestures"];
+    [self.settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
+    [pool release];
 }
 
 - (void)saveChangesOperation {
@@ -184,7 +223,7 @@ GRGestureController *sharedInstance;
 }
 
 - (NSString *)localizedTitleForEventName:(NSString *)eventName {
-    NSString *gestureID = [eventName stringByReplacingOccurrencesOfString:@"org.thebigboss.gesturizer." withString:@""];
+    NSString *gestureID = [eventName stringByReplacingOccurrencesOfString:@"org.thebigboss.gesturizer.event." withString:@""];
     NSString *name = [[self.gestures objectForKey:gestureID] objectForKey:@"name"];
     if (!name) {
         name = @"Gesturizer Event";
@@ -247,9 +286,6 @@ GRGestureController *sharedInstance;
         NSString *listenerName = nil;
         if ((listenerName = [activator assignedListenerNameForEvent:gestureEvent])) {
             [activator sendEventToListener:gestureEvent];
-            if (!gestureEvent.handled)
-                NSLog(@"Did not handle event!");
-
             return gestureEvent.handled;
         }
 
@@ -320,6 +356,7 @@ GRGestureController *sharedInstance;
                 }
 
                 [gesture setObject:templates forKey:@"templates"];
+                [gesture removeObjectForKey:@"strokes"];
             }
         }
     }
@@ -382,7 +419,9 @@ GRGestureController *sharedInstance;
     }
 
     if (gestureCount < 1) {
-        // POP AN ALERT
+        UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"You do not have any gestures configured for Gesturizer. Open the Settings application to configure gestures." delegate:self cancelButtonTitle:@"Okay" otherButtonTitles:nil];
+        [errorAlert show];
+        [errorAlert release];
         return;
     }
 
@@ -394,6 +433,7 @@ GRGestureController *sharedInstance;
         self.gestureRecognizer.delaysTouchesBegan = NO;
         self.gestureRecognizer.delaysTouchesEnded = NO;
         self.gestureRecognizer.gestures = [self.gestures allValues];
+        self.gestureRecognizer.orientation = [[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
 
         CGRect screenFrame = [[UIScreen mainScreen] bounds];
         self.window = [[GRWindow alloc] initWithFrame:screenFrame];
@@ -416,6 +456,7 @@ GRGestureController *sharedInstance;
             self.gestureRecognizer = nil;
         }];
         [prevKeyWindow makeKeyAndVisible];
+        prevKeyWindow = nil;
         windowIsActive = NO;
     }
 }

@@ -11,7 +11,9 @@
 @property (nonatomic, retain) NSMutableArray *points;
 @property (nonatomic, retain) NSArray *sortedResults;
 @property (nonatomic, retain) NSTimer *waitTimer;
+@property (nonatomic) int orientation;
 
 - (void)recognizeGesture;
+- (void)addPoint:(CGPoint)point;
 
 @end

@@ -37,11 +37,14 @@
 - (void)activateWindow;
 - (void)deactivateWindow;
 
-- (void)saveChanges;
 - (void)memoryWarning;
 
-- (void)permuteStrokeOrderings:(int)count;
+- (void)updateGesture:(NSMutableDictionary *)gesture;
+- (void)deleteGesture:(NSMutableDictionary *)gesture;
+- (void)saveChanges;
+
 - (void)createTemplates;
+- (void)permuteStrokeOrderings:(int)count;
 
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture;
 - (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture;

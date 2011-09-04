@@ -14,7 +14,7 @@
 			<key>cell</key>
 			<string>PSLinkCell</string>
 			<key>label</key>
-			<string>Activation</string>
+			<string>Activation Methods</string>
 			<key>isController</key>
 			<true/>
 			<key>bundle</key>

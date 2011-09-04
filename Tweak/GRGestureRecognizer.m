@@ -3,7 +3,7 @@
 
 @implementation GRGestureRecognizer
 
-@synthesize gestures=_gestures, points=_points, sortedResults=_sortedResults, waitTimer=_waitTimer;
+@synthesize gestures=_gestures, points=_points, sortedResults=_sortedResults, waitTimer=_waitTimer, orientation;
 
 - (id)initWithTarget:(id)target action:(SEL)action {
     if ((self = [super initWithTarget:target action:action])) {
@@ -20,6 +20,22 @@
     [super dealloc];
 }
 
+- (void)addPoint:(CGPoint)rawLocation {
+    CGPoint actualLocation;
+    if (self.orientation == 1) {
+        actualLocation = rawLocation;
+    } else if (self.orientation == 2) {
+        actualLocation = CGPointMake((self.view.frame.size.width - rawLocation.x), (self.view.frame.size.height - rawLocation.y));
+    } else if (self.orientation == 3) {
+        actualLocation = CGPointMake(rawLocation.y, (self.view.frame.size.width - rawLocation.x));
+    } else if (self.orientation == 4) {
+        actualLocation = CGPointMake((self.view.frame.size.height - rawLocation.y), rawLocation.x);
+    }
+
+    NSDictionary *touchDict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:actualLocation.x], @"x", [NSNumber numberWithFloat:actualLocation.y], @"y", nil];
+    [self.points addObject:touchDict];
+}
+
 // Handles the start of a touch
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     if ([self.waitTimer isValid]) {
@@ -28,32 +44,27 @@
     self.waitTimer = nil;
 
     CGPoint touchLocation = [[touches anyObject] locationInView:nil];
-    NSDictionary *touchDict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
-    [self.points addObject:touchDict];
+    [self addPoint:touchLocation];
 }
 
 // Handles the continuation of a touch.
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     CGPoint touchLocation = [[touches anyObject] locationInView:nil];
-    NSDictionary *touchDict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
-    [self.points addObject:touchDict];
-
+    [self addPoint:touchLocation];
 }
 
 // Handles the end of a touch event when the touch is a tap.
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
     CGPoint touchLocation = [[touches anyObject] locationInView:nil];
-    NSDictionary *touchDict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
-    [self.points addObject:touchDict];
+    [self addPoint:touchLocation];
 
     self.waitTimer = [NSTimer scheduledTimerWithTimeInterval:1.75f target:self selector:@selector(recognizeGesture) userInfo:nil repeats:NO];
 }
 
 // Handles the end of a touch event.
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
-   CGPoint touchLocation = [[touches anyObject] locationInView:nil];
-    NSDictionary *touchDict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
-    [self.points addObject:touchDict];
+    CGPoint touchLocation = [[touches anyObject] locationInView:nil];
+    [self addPoint:touchLocation];
 
     [self recognizeGesture];
 }
