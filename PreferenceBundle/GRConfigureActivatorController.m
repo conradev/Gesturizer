@@ -7,8 +7,7 @@
 - (id)initWithEventName:(NSString *)eventName {
     if ((self = [super init])) {
         LAActivator *activator = [LAActivator sharedInstance];
-        NSArray *modes = [activator availableEventModes];
-        eventSettings = [[LAEventSettingsController alloc] initWithModes:modes eventName:eventName];
+        eventSettings = [[LAEventSettingsController alloc] initWithModes:[activator availableEventModes] eventName:eventName];
 
         self.navigationItem.title = @"Gesturizer Event";
     }

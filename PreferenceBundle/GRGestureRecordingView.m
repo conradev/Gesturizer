@@ -71,6 +71,7 @@
     NSDictionary *touch = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithFloat:touchLocation.x], @"x", [NSNumber numberWithFloat:touchLocation.y], @"y", nil];
     [currentStroke addObject:touch];
 
+
     [strokes addObject:currentStroke];
     [currentStroke release];
     currentStroke = nil;

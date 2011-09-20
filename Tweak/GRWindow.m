@@ -10,11 +10,17 @@
         self.backgroundColor = [UIColor blackColor];
         self.multipleTouchEnabled = NO;
         self.alpha = 0.0f;
-        
-        self.paintView = [[GRPaintView alloc] initWithFrame:frame];
+
+        self.paintView = [[[GRPaintView alloc] initWithFrame:frame] autorelease];
         [self addSubview:self.paintView];
     }
     return self;
+}
+
+- (void)dealloc {
+    self.paintView = nil;
+
+    [super dealloc];
 }
 
 @end

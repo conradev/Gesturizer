@@ -1,0 +1,7 @@
+{
+    Name = "Gesturizer";
+	CYPlugin = "GesturizerLockScreen";
+	CYTagline = "Lock Screen plugin for Gesturizer";
+    CYBackground = "Wallpaper";
+    CYShowDateTime = true;
+}

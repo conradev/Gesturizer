@@ -7,7 +7,7 @@ GRRootListController *sharedInstance = nil;
 
 @implementation GRRootListController
 
-@synthesize gestures=_gestures;
+@synthesize gestures=_gestures, enabled=_enabled, settingsDict=_settingsDict;
 
 + (id)sharedInstance {
     return sharedInstance;
@@ -17,8 +17,9 @@ GRRootListController *sharedInstance = nil;
     if ((self = [super init])) {
         sharedInstance = self;
         CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
-        NSDictionary *settingsDict = [messagingCenter sendMessageAndReceiveReplyName:@"returnSettings" userInfo:nil];
-        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[settingsDict objectForKey:@"gestures"]];
+        self.settingsDict = [messagingCenter sendMessageAndReceiveReplyName:@"returnSettings" userInfo:nil];
+        self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
+        self.enabled = [self.settingsDict objectForKey:@"enabled"];
     }
     return self;
 }
@@ -26,6 +27,8 @@ GRRootListController *sharedInstance = nil;
 - (void)dealloc {
     sharedInstance = nil;
     self.gestures = nil;
+    self.enabled = nil;
+    self.settingsDict = nil;
     [super dealloc];
 }
 
@@ -59,6 +62,16 @@ GRRootListController *sharedInstance = nil;
         _specifiers = [mutSpecs copy];
     }
     return _specifiers;
+}
+
+- (void)setEnabled:(NSNumber *)value specifier:(PSSpecifier *)spec {
+    CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
+    [messagingCenter sendMessageName:@"setEnabled" userInfo:[NSDictionary dictionaryWithObject:value forKey:@"enabled"]];
+    self.enabled = value;
+}
+
+- (NSNumber *)getEnabled:(PSSpecifier *)spec {
+    return self.enabled;
 }
 
 - (void)deleteGesture:(NSDictionary *)gesture {

@@ -4,11 +4,13 @@
 @interface GRRootListController : PSListController {
     NSArray *gestureSpecifiers;
 
-    NSMutableDictionary *_settingsDict;
     NSMutableDictionary *_gestures;
+    NSNumber *_enabled;
 }
 
+@property (nonatomic, retain) NSDictionary *settingsDict;
 @property (nonatomic, retain) NSMutableDictionary *gestures;
+@property (nonatomic, retain) NSNumber *enabled;
 
 + (id)sharedInstance;
 

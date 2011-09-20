@@ -12,15 +12,15 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSLinkCell</string>
+			<string>PSSwitchCell</string>
 			<key>label</key>
-			<string>Activation Methods</string>
-			<key>isController</key>
+			<string>Enabled</string>
+			<key>default</key>
 			<true/>
-			<key>bundle</key>
-			<string>LibActivator</string>
-			<key>activatorListener</key>
-			<string>org.thebigboss.gesturizer</string>
+			<key>set</key>
+			<string>setEnabled:specifier:</string>
+			<key>get</key>
+			<string>getEnabled:</string>
 		</dict>
 		<dict>
 			<key>cell</key>

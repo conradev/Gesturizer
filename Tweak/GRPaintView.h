@@ -78,10 +78,13 @@
 	CGPoint	previousLocation;
 	Boolean	firstTouch;
 	Boolean needsErase;
+
+    BOOL hasContent;
 }
 
 @property(nonatomic, readwrite) CGPoint location;
 @property(nonatomic, readwrite) CGPoint previousLocation;
+@property(nonatomic, readonly) BOOL hasContent;
 
 - (void)erase;
 

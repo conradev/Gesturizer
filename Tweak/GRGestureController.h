@@ -34,8 +34,9 @@
 
 - (id)init;
 
-- (void)activateWindow;
-- (void)deactivateWindow;
+- (void)showSwitcherWindow:(double)duration;
+- (void)updateSwitcherWindow:(double)duration orientation:(int)newOrientation;
+- (void)hideSwitcherWindow:(double)duration;
 
 - (void)memoryWarning;
 

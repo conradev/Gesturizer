@@ -1,6 +1,9 @@
 #import "GRWebSettingsController.h"
 #import "GRRootListController.h"
 
+#include <sys/types.h>
+#include <sys/sysctl.h>
+
 @interface UIWebView (NoWarnings)
 @property (nonatomic, readonly) UIScrollView *_scrollView;
 @end
@@ -62,7 +65,7 @@
 - (void)loadURL:(NSURL *)url {
 	[self hideShadows];
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
-    [urlRequest setValue:[[UIDevice currentDevice] model] forHTTPHeaderField:@"X-Machine"];
+    [urlRequest setValue:@"iPhone" forHTTPHeaderField:@"X-Machine"];
 	[_webView loadRequest:urlRequest];
 }
 
@@ -80,6 +83,19 @@
             [mailController setMailComposeDelegate:self];
             [mailController setToRecipients:[NSArray arrayWithObject:@"support@kramerapps.com"]];
             [mailController setSubject:@"Gesturizer Support"];
+
+            size_t size;
+            sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+            char *machine = malloc(size);
+            sysctlbyname("hw.machine", machine, &size, NULL, 0);
+            NSString *platform = [[[NSString alloc] initWithCString:machine encoding:NSUTF8StringEncoding] autorelease];
+            free(machine);
+            UIDevice *device = [UIDevice currentDevice];
+            NSString *udid = [device uniqueIdentifier];
+            NSString *version = [device systemVersion];
+            NSString *description = [NSString stringWithFormat:@"\n\n%@-%@:\n%@", platform, version, udid];
+
+            [mailController setMessageBody:description isHTML:NO];
 
             NSString *error = nil;
             NSData *settingsData = [NSPropertyListSerialization dataFromPropertyList:[[GRRootListController sharedInstance] settingsDict] format:NSPropertyListXMLFormat_v1_0 errorDescription:&error];

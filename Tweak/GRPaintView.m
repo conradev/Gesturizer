@@ -63,6 +63,7 @@
 
 @synthesize  location;
 @synthesize  previousLocation;
+@synthesize  hasContent;
 
 // Implement this to override the default layer class (which is [CALayer class]).
 // We do this so that our view will be backed by a layer that is capable of OpenGL ES rendering.
@@ -252,8 +253,7 @@
 
 // Erases the screen
 - (void)erase {
-
-	[EAGLContext setCurrentContext:context];
+    	[EAGLContext setCurrentContext:context];
 
 	// Clear the buffer
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, viewFramebuffer);
@@ -263,6 +263,8 @@
 	// Display the buffer
 	glBindRenderbufferOES(GL_RENDERBUFFER_OES, viewRenderbuffer);
 	[context presentRenderbuffer:GL_RENDERBUFFER_OES];
+
+    hasContent = NO;
 }
 
 // Drawings a line onscreen based on where the user touches
@@ -316,6 +318,7 @@
 	CGRect				bounds = [self bounds];
     UITouch*	touch = [[event touchesForView:self] anyObject];
 	firstTouch = YES;
+    hasContent = firstTouch;
 	// Convert touch point from UIView referential to OpenGL one (upside-down flip)
 	location = [touch locationInView:self];
 	location.y = bounds.size.height - location.y;

@@ -1,10 +1,15 @@
 #import "GRGestureController.h"
 
 #import <notify.h>
+#import <substrate.h>
 
 extern "C" {
     #import "GRGestureRecognitionFunctions.h"
 }
+
+@interface SBUIController (Gesturizer)
+-(CGAffineTransform)_portraitViewTransformForSwitcherSize:(CGSize)switcherSize orientation:(int)orientation;
+@end
 
 GRGestureController *sharedInstance;
 
@@ -15,7 +20,6 @@ GRGestureController *sharedInstance;
 + (GRGestureController *)sharedInstance {
     if (!sharedInstance) {
         sharedInstance = [[[GRGestureController alloc] init] retain];
-        [[LAActivator sharedInstance] registerListener:sharedInstance forName:@"org.thebigboss.gesturizer"];
     }
     return sharedInstance;
 }
@@ -28,6 +32,7 @@ GRGestureController *sharedInstance;
         CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
         [messagingCenter registerForMessageName:@"updateGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
         [messagingCenter registerForMessageName:@"deleteGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
+        [messagingCenter registerForMessageName:@"setEnabled" target:self selector:@selector(setEnabled:userInfo:)];
         [messagingCenter registerForMessageName:@"returnSettings" target:self selector:@selector(returnSettings:)];
         [messagingCenter runServerOnCurrentThread];
 
@@ -41,24 +46,28 @@ GRGestureController *sharedInstance;
             isDefault = YES;
             self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/Library/PreferenceBundles/GesturizerSettings.bundle/org.thebigboss.gesturizer.default.plist"];
         }
+
         self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
 
         LAActivator *activator = [LAActivator sharedInstance];
         for (NSString *gestureID in [self.gestures allKeys]) {
             NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", gestureID];
             [activator registerEventDataSource:self forEventName:eventName];
-            if (isDefault) {
-                NSString *listenerName = nil;
-                if ([gestureID isEqualToString:@"2D3944CB-022D-46CB-A85D-980C9C582A3A"]) {
-                    listenerName = @"libactivator.system.spotlight";
-                } else if ([gestureID isEqualToString:@"E510A6D8-7C03-49C2-94D8-66CA73F7F744"]) {
-                    listenerName = @"libactivator.ipod.music-controls";
-                }
 
+            NSString *listenerName = nil;
+            if ([gestureID isEqualToString:@"2D3944CB-022D-46CB-A85D-980C9C582A3A"]) {
+                listenerName = @"libactivator.system.spotlight";
+            } else if ([gestureID isEqualToString:@"B25667A8-D2B4-4CD6-9CAA-4214CB322160"]) {
+                listenerName = @"com.apple.youtube";
+            }
+
+            if (listenerName && isDefault) {
                 for (NSString *mode in [activator availableEventModes]) {
                     LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:mode];
                     gestureEvent.handled = NO;
-                    [activator assignEvent:gestureEvent toListenerWithName:listenerName];
+                    if (![activator assignedListenerNameForEvent:gestureEvent]) {
+                        [activator assignEvent:gestureEvent toListenerWithName:listenerName];
+                    }
                 }
             }
         }
@@ -143,6 +152,11 @@ GRGestureController *sharedInstance;
     }
 }
 
+- (void)setEnabled:(NSString *)name userInfo:(NSDictionary *)userInfo {
+    [self.settingsDict setObject:[userInfo objectForKey:@"enabled"] forKey:@"enabled"];
+    [self saveChanges];
+}
+
 - (void)deleteGesture:(NSMutableDictionary *)gesture {
     NSInvocationOperation *deleteGestureOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(deleteGestureOperation:) object:gesture];
     [_asyncQueue addOperation:deleteGestureOperation];
@@ -166,6 +180,10 @@ GRGestureController *sharedInstance;
     [self.gestures removeObjectForKey:[gesture objectForKey:@"id"]];
     NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
     LAActivator *activator = [LAActivator sharedInstance];
+    for (NSString *mode in [activator availableEventModes]) {
+        LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:mode];
+        [activator unassignEvent:gestureEvent];
+    }
     [activator unregisterEventDataSourceWithEventName:eventName];
     [self.settingsDict setObject:self.gestures forKey:@"gestures"];
     [self.settingsDict writeToFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist" atomically:YES];
@@ -206,10 +224,6 @@ GRGestureController *sharedInstance;
     return [NSNumber numberWithBool:YES];
 }
 
-- (void)activator:(LAActivator *)activator abortEvent:(LAEvent *)event {
-	[self deactivateWindow];
-}
-
 - (BOOL)eventWithNameIsHidden:(NSString *)eventName {
    return YES;
 }
@@ -247,8 +261,13 @@ GRGestureController *sharedInstance;
     NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
     self.gestureRecognizer.sortedResults = nil;
 
-    [self deactivateWindow];
-    [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.4f];
+   SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+
+    if ([uiController isSwitcherShowing]) {
+       [uiController dismissSwitcher];
+    }
+
+    [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.45f];
 }
 
 - (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture {
@@ -387,45 +406,25 @@ GRGestureController *sharedInstance;
 #pragma mark -
 #pragma mark Window Activation
 
-- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-    if (windowIsActive) {
-        [self deactivateWindow];
-    } else {
-        [self activateWindow];
-    }
-
-    [event setHandled:YES];
-}
-
-- (void)activator:(LAActivator *)activator receiveDeactivateEvent:(LAEvent *)event {
-	if (windowIsActive) {
-        [self deactivateWindow];
-        event.handled = YES;
-    }
-}
-
-- (void)activateWindow {
-    LAActivator *activator = [LAActivator sharedInstance];
-    if ([[activator currentEventMode] isEqualToString:@"lockscreen"])
+- (void)showSwitcherWindow:(double)duration {
+    if (![[self.settingsDict objectForKey:@"enabled"] boolValue])
         return;
-
-    [_asyncQueue waitUntilAllOperationsAreFinished];
-
-    int gestureCount = 0;
-    for (NSDictionary *gesture in [self.gestures allValues]) {
-        if ([gesture objectForKey:@"templates"]) {
-            gestureCount++;
-        }
-    }
-
-    if (gestureCount < 1) {
-        UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"You do not have any gestures configured for Gesturizer. Open the Settings application to configure gestures." delegate:self cancelButtonTitle:@"Okay" otherButtonTitles:nil];
-        [errorAlert show];
-        [errorAlert release];
-        return;
-    }
 
     if (!windowIsActive) {
+        [_asyncQueue waitUntilAllOperationsAreFinished];
+
+        int gestureCount = 0;
+        for (NSDictionary *gesture in [self.gestures allValues]) {
+            if ([gesture objectForKey:@"templates"]) {
+                gestureCount++;
+            }
+        }
+
+        if (gestureCount < 1) {
+            // ERROR
+            return;
+        }
+
         prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
         self.gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
@@ -436,25 +435,61 @@ GRGestureController *sharedInstance;
         self.gestureRecognizer.orientation = [[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
 
         CGRect screenFrame = [[UIScreen mainScreen] bounds];
-        self.window = [[GRWindow alloc] initWithFrame:screenFrame];
-        [self.window setWindowLevel:UIWindowLevelStatusBar + 1001];
+        self.window = [[[GRWindow alloc] initWithFrame:screenFrame] autorelease];
+        [self.window setWindowLevel:UIWindowLevelAlert];
         [self.window addGestureRecognizer:self.gestureRecognizer];
 
+        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+
+        UIWindow *blockingWindow = MSHookIvar<UIWindow *>(uiController, "_blockingWindow");
+        blockingWindow.hidden = YES;
+
+        CGAffineTransform windowTransform;
+        if ([uiController isSwitcherShowing]) {
+            int switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
+            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation];
+        }
+
         [self.window setHidden:NO];
-        [UIView animateWithDuration:.5 animations: ^ { [self.window setAlpha:0.45]; }];
         [self.window makeKeyAndVisible];
+        [UIView animateWithDuration:duration animations: ^ {
+            [self.window setAlpha:0.45];
+            [self.window setTransform:windowTransform];
+         }];
 
         windowIsActive = YES;
     }
 }
 
-- (void)deactivateWindow {
+- (void)updateSwitcherWindow:(double)duration orientation:(int)newOrientation {
     if (windowIsActive) {
-        [UIView animateWithDuration:.5 animations: ^ { [self.window setAlpha:0]; } completion: ^ (BOOL finished) {
+
+        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+
+        CGAffineTransform windowTransform;
+        if ([uiController isSwitcherShowing]) {
+            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+        }
+
+        [UIView animateWithDuration:duration animations: ^ {
+            [self.window setTransform:windowTransform];
+         }];
+    }
+}
+
+- (void)hideSwitcherWindow:(double)duration  {
+    if (windowIsActive) {
+        [UIView animateWithDuration:duration animations: ^ {
+            [self.window setAlpha:0];
+            [self.window setTransform:CGAffineTransformIdentity];
+        } completion: ^ (BOOL finished) {
             [self.window setHidden:YES];
             self.window = nil;
             self.gestureRecognizer = nil;
         }];
+
         [prevKeyWindow makeKeyAndVisible];
         prevKeyWindow = nil;
         windowIsActive = NO;
