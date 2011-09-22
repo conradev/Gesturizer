@@ -425,8 +425,6 @@ GRGestureController *sharedInstance;
             return;
         }
 
-        prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
-
         self.gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
         self.gestureRecognizer.cancelsTouchesInView = NO;
         self.gestureRecognizer.delaysTouchesBegan = NO;
@@ -490,8 +488,6 @@ GRGestureController *sharedInstance;
             self.gestureRecognizer = nil;
         }];
 
-        [prevKeyWindow makeKeyAndVisible];
-        prevKeyWindow = nil;
         windowIsActive = NO;
     }
 }
