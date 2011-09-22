@@ -15,7 +15,7 @@ GRGestureController *sharedInstance;
 
 @implementation GRGestureController
 
-@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer, settingsDict=_settingsDict;
+@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer, settingsDict=_settingsDict, prevKeyWindow=_prevKeyWindow;
 
 + (GRGestureController *)sharedInstance {
     if (!sharedInstance) {
@@ -421,9 +421,10 @@ GRGestureController *sharedInstance;
         }
 
         if (gestureCount < 1) {
-            // ERROR
             return;
         }
+
+        self.prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
         self.gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
         self.gestureRecognizer.cancelsTouchesInView = NO;
@@ -488,6 +489,14 @@ GRGestureController *sharedInstance;
             self.gestureRecognizer = nil;
         }];
 
+        if (self.prevKeyWindow.hidden) {
+            SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+            [uiController.window makeKeyAndVisible];
+        } else {
+            [self.prevKeyWindow makeKeyAndVisible];
+        }
+
+        self.prevKeyWindow = nil;
         windowIsActive = NO;
     }
 }
