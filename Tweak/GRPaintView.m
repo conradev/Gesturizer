@@ -105,7 +105,7 @@
 			return nil;
 		}
 
-        NSString *imagePath = @"/Library/Application Support/Gesturizer/Particle.png";
+        NSString *imagePath = @"/Library/PreferenceBundles/GesturizerSettings.bundle/Particle.png";
         if (scale >= 2.0) {
             imagePath = [NSString stringWithFormat:@"%@@2x.%@", [imagePath stringByDeletingPathExtension], [imagePath pathExtension]];
         }
