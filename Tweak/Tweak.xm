@@ -15,6 +15,13 @@
     return;
 }
 
+- (BOOL)_revealSwitcher:(double)duration {
+    BOOL orig = %orig;
+    GRGestureController *gestureController = [GRGestureController sharedInstance];
+    [gestureController showSwitcherWindow:duration];
+    return orig;
+}
+
 - (BOOL)_revealSwitcher:(double)duration appOrientation:(int)orientation switcherOrientation:(int)orientation3 {
     BOOL orig = %orig;
     GRGestureController *gestureController = [GRGestureController sharedInstance];
