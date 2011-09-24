@@ -50,7 +50,17 @@ GRGestureController *sharedInstance;
             self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/Library/PreferenceBundles/GesturizerSettings.bundle/org.thebigboss.gesturizer.default.plist"];
         }
 
+        if ([self.settingsDict objectForKey:@"enabled"]) {
+            [self.settingsDict setObject:[self.settingsDict objectForKey:@"enabled"] forKey:@"switcherEnabled"];
+            [self.settingsDict removeObjectForKey:@"enabled"];
+        }
+
         self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
+
+        for (NSDictionary *statGesture in [self.gestures allValues]) {
+            NSMutableDictionary *gesture = [NSMutableDictionary dictionaryWithDictionary:statGesture];
+            [gesture removeObjectForKey:@"score"];
+        }
 
         LAActivator *activator = [LAActivator sharedInstance];
         for (NSString *gestureID in [self.gestures allKeys]) {
@@ -259,6 +269,11 @@ GRGestureController *sharedInstance;
 - (void)gestureWasRecognized:(UIGestureRecognizer *)theGestureRecognizer {
     NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
     self.gestureRecognizer.sortedResults = nil;
+
+    for (NSDictionary *statGesture in [self.gestures allValues]) {
+        NSMutableDictionary *gesture = [NSMutableDictionary dictionaryWithDictionary:statGesture];
+        [gesture removeObjectForKey:@"score"];
+    }
 
     if (switcherWindowIsActive) {
        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
