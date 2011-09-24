@@ -12,7 +12,8 @@
     GRWindow *_window;
     GRGestureRecognizer *_gestureRecognizer;
 
-    BOOL windowIsActive;
+    BOOL switcherWindowIsActive;
+    BOOL activatorWindowIsActive;
 
     NSMutableArray *oneSuchOrdering;
     NSMutableArray *permutedStrokeOrderings;
@@ -34,6 +35,9 @@
 
 - (id)init;
 
+- (void)activateWindow:(double)duration transform:(CGAffineTransform)transform;
+- (void)deactivateWindow:(double)duration;
+
 - (void)showSwitcherWindow:(double)duration;
 - (void)updateSwitcherWindow:(double)duration orientation:(int)newOrientation;
 - (void)hideSwitcherWindow:(double)duration;
@@ -48,6 +52,5 @@
 - (void)permuteStrokeOrderings:(int)count;
 
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture;
-- (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture;
 
 @end

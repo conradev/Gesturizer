@@ -10,7 +10,7 @@
 
 @property (nonatomic, retain) NSDictionary *settingsDict;
 @property (nonatomic, retain) NSMutableDictionary *gestures;
-@property (nonatomic, retain) NSNumber *enabled;
+@property (nonatomic, retain) NSNumber *switcherEnabled;
 
 + (id)sharedInstance;
 

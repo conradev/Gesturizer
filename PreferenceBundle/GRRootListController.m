@@ -7,7 +7,7 @@ GRRootListController *sharedInstance = nil;
 
 @implementation GRRootListController
 
-@synthesize gestures=_gestures, enabled=_enabled, settingsDict=_settingsDict;
+@synthesize gestures=_gestures, switcherEnabled=_switcherEnabled, settingsDict=_settingsDict;
 
 + (id)sharedInstance {
     return sharedInstance;
@@ -19,7 +19,7 @@ GRRootListController *sharedInstance = nil;
         CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
         self.settingsDict = [messagingCenter sendMessageAndReceiveReplyName:@"returnSettings" userInfo:nil];
         self.gestures = [NSMutableDictionary dictionaryWithDictionary:[self.settingsDict objectForKey:@"gestures"]];
-        self.enabled = [self.settingsDict objectForKey:@"enabled"];
+        self.switcherEnabled = [self.settingsDict objectForKey:@"switcherEnabled"];
     }
     return self;
 }
@@ -27,7 +27,7 @@ GRRootListController *sharedInstance = nil;
 - (void)dealloc {
     sharedInstance = nil;
     self.gestures = nil;
-    self.enabled = nil;
+    self.switcherEnabled = nil;
     self.settingsDict = nil;
     [super dealloc];
 }
@@ -64,14 +64,14 @@ GRRootListController *sharedInstance = nil;
     return _specifiers;
 }
 
-- (void)setEnabled:(NSNumber *)value specifier:(PSSpecifier *)spec {
+- (void)setSwitcherEnabled:(NSNumber *)value specifier:(PSSpecifier *)spec {
     CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
-    [messagingCenter sendMessageName:@"setEnabled" userInfo:[NSDictionary dictionaryWithObject:value forKey:@"enabled"]];
-    self.enabled = value;
+    [messagingCenter sendMessageName:@"setSwitcherEnabled" userInfo:[NSDictionary dictionaryWithObject:value forKey:@"switcherEnabled"]];
+    self.switcherEnabled = value;
 }
 
-- (NSNumber *)getEnabled:(PSSpecifier *)spec {
-    return self.enabled;
+- (NSNumber *)getSwitcherEnabled:(PSSpecifier *)spec {
+    return self.switcherEnabled;
 }
 
 - (void)deleteGesture:(NSDictionary *)gesture {

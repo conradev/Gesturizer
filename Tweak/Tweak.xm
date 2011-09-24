@@ -11,10 +11,6 @@
 
 %hook SBUIController
 
-- (void)applicationHideSwitcherGestureRecognized {
-    return;
-}
-
 - (BOOL)_revealSwitcher:(double)duration {
     BOOL orig = %orig;
     GRGestureController *gestureController = [GRGestureController sharedInstance];
@@ -45,6 +41,26 @@
     %orig;
     GRGestureController *gestureController = [GRGestureController sharedInstance];
     [gestureController updateSwitcherWindow:duration orientation:interfaceOrientation];
+}
+
+- (void)lock {
+    [[GRGestureController sharedInstance] deactivateWindow:0.25f];
+    %orig;
+}
+
+- (void)lockWithType:(int)type {
+    [[GRGestureController sharedInstance] deactivateWindow:0.25f];
+    %orig;
+}
+
+- (void)lockWithType:(int)type disableLockSound:(BOOL)sound {
+    [[GRGestureController sharedInstance] deactivateWindow:0.25f];
+    %orig;
+}
+
+- (void)cleanUpOnFrontLocked {
+    [[GRGestureController sharedInstance] deactivateWindow:0.25f];
+    %orig;
 }
 
 %end

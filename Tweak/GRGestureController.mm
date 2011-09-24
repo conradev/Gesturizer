@@ -20,19 +20,21 @@ GRGestureController *sharedInstance;
 + (GRGestureController *)sharedInstance {
     if (!sharedInstance) {
         sharedInstance = [[[GRGestureController alloc] init] retain];
+        [[LAActivator sharedInstance] registerListener:sharedInstance forName:@"org.thebigboss.gesturizer"];
     }
     return sharedInstance;
 }
 
 - (id)init {
     if ((self = [super init])) {
-        windowIsActive = NO;
+        switcherWindowIsActive = NO;
+        activatorWindowIsActive = NO;
         isInitializing = YES;
 
         CPDistributedMessagingCenter *messagingCenter = [CPDistributedMessagingCenter centerNamed:@"org.thebigboss.gesturizer.server"];
         [messagingCenter registerForMessageName:@"updateGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
         [messagingCenter registerForMessageName:@"deleteGesture" target:self selector:@selector(gestureChangeWithName:gesture:)];
-        [messagingCenter registerForMessageName:@"setEnabled" target:self selector:@selector(setEnabled:userInfo:)];
+        [messagingCenter registerForMessageName:@"setSwitcherEnabled" target:self selector:@selector(setSwitcherEnabled:userInfo:)];
         [messagingCenter registerForMessageName:@"returnSettings" target:self selector:@selector(returnSettings:)];
         [messagingCenter runServerOnCurrentThread];
 
@@ -42,6 +44,7 @@ GRGestureController *sharedInstance;
 
         BOOL isDefault = NO;
         self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
+
         if (!self.settingsDict) {
             isDefault = YES;
             self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/Library/PreferenceBundles/GesturizerSettings.bundle/org.thebigboss.gesturizer.default.plist"];
@@ -152,8 +155,8 @@ GRGestureController *sharedInstance;
     }
 }
 
-- (void)setEnabled:(NSString *)name userInfo:(NSDictionary *)userInfo {
-    [self.settingsDict setObject:[userInfo objectForKey:@"enabled"] forKey:@"enabled"];
+- (void)setSwitcherEnabled:(NSString *)name userInfo:(NSDictionary *)userInfo {
+    [self.settingsDict setObject:[userInfo objectForKey:@"switcherEnabled"] forKey:@"switcherEnabled"];
     [self saveChanges];
 }
 
@@ -229,11 +232,7 @@ GRGestureController *sharedInstance;
 }
 
 - (BOOL)eventWithName:(NSString *)eventName isCompatibleWithMode:(NSString *)eventMode {
-   if (![eventMode isEqualToString:@"lockscreen"]) {
-        return YES;
-   }
-
-   return NO;
+   return YES;
 }
 
 - (NSString *)localizedTitleForEventName:(NSString *)eventName {
@@ -261,36 +260,15 @@ GRGestureController *sharedInstance;
     NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
     self.gestureRecognizer.sortedResults = nil;
 
-   SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
-
-    if ([uiController isSwitcherShowing]) {
+    if (switcherWindowIsActive) {
+       SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
        [uiController dismissSwitcher];
+    } else if (activatorWindowIsActive) {
+        [self deactivateWindow:0.25f];
+        activatorWindowIsActive = NO;
     }
 
-    [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.45f];
-}
-
-- (BOOL)canExecuteActionForGesture:(NSDictionary *)gesture {
-    NSString *action = [gesture objectForKey:@"action"];
-    if ([action isEqualToString:@"activator"]) {
-        LAActivator *activator = [LAActivator sharedInstance];
-
-        NSString *eventName = [NSString stringWithFormat:@"org.thebigboss.gesturizer.event.%@", [gesture objectForKey:@"id"]];
-        LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:[activator currentEventMode]];
-        gestureEvent.handled = NO;
-
-        if ( [activator assignedListenerNameForEvent:gestureEvent]) {
-            return YES;
-        }
-    } else if ([action isEqualToString:@"url"]) {
-        NSURL *url = [NSURL URLWithString:[gesture objectForKey:@"url"]];
-        SpringBoard *springboard = [objc_getClass("SpringBoard") sharedApplication];
-        if ([springboard applicationCanOpenURL:url publicURLsOnly:NO]) {
-            return YES;
-        }
-    }
-
-    return NO;
+    [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.25f];
 }
 
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture {
@@ -406,12 +384,8 @@ GRGestureController *sharedInstance;
 #pragma mark -
 #pragma mark Window Activation
 
-- (void)showSwitcherWindow:(double)duration {
-    if (![[self.settingsDict objectForKey:@"enabled"] boolValue])
-        return;
-
-    if (!windowIsActive) {
-        [_asyncQueue waitUntilAllOperationsAreFinished];
+- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
+	if (!activatorWindowIsActive && !switcherWindowIsActive) {
 
         int gestureCount = 0;
         for (NSDictionary *gesture in [self.gestures allValues]) {
@@ -421,8 +395,37 @@ GRGestureController *sharedInstance;
         }
 
         if (gestureCount < 1) {
-            return;
+            // POP AN ALERT!!!!!!!
         }
+
+        [self activateWindow:0.25f transform:CGAffineTransformIdentity];
+        activatorWindowIsActive = YES;
+        event.handled = YES;
+
+	} else if (activatorWindowIsActive) {
+
+        [self deactivateWindow:0.25f];
+        activatorWindowIsActive = NO;
+        event.handled = YES;
+    }
+}
+
+- (void)activator:(LAActivator *)activator receiveDeactivateEvent:(LAEvent *)event {
+    if (activatorWindowIsActive) {
+        [self deactivateWindow:0.25f];
+        activatorWindowIsActive = NO;
+        event.handled = YES;
+    }
+}
+
+- (void)activator:(LAActivator *)activator abortEvent:(LAEvent *)event {
+    [self deactivateWindow:0.25f];
+    activatorWindowIsActive = NO;
+}
+
+- (void)activateWindow:(double)duration transform:(CGAffineTransform)transform {
+    if (!switcherWindowIsActive && !activatorWindowIsActive) {
+        [_asyncQueue waitUntilAllOperationsAreFinished];
 
         self.prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
@@ -438,48 +441,17 @@ GRGestureController *sharedInstance;
         [self.window setWindowLevel:UIWindowLevelAlert];
         [self.window addGestureRecognizer:self.gestureRecognizer];
 
-        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
-
-        UIWindow *blockingWindow = MSHookIvar<UIWindow *>(uiController, "_blockingWindow");
-        blockingWindow.hidden = YES;
-
-        CGAffineTransform windowTransform;
-        if ([uiController isSwitcherShowing]) {
-            int switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
-            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
-            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation];
-        }
-
         [self.window setHidden:NO];
         [self.window makeKeyAndVisible];
         [UIView animateWithDuration:duration animations: ^ {
             [self.window setAlpha:0.45];
-            [self.window setTransform:windowTransform];
+            [self.window setTransform:transform];
          }];
-
-        windowIsActive = YES;
-    }
+     }
 }
 
-- (void)updateSwitcherWindow:(double)duration orientation:(int)newOrientation {
-    if (windowIsActive) {
-
-        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
-
-        CGAffineTransform windowTransform;
-        if ([uiController isSwitcherShowing]) {
-            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
-            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
-        }
-
-        [UIView animateWithDuration:duration animations: ^ {
-            [self.window setTransform:windowTransform];
-         }];
-    }
-}
-
-- (void)hideSwitcherWindow:(double)duration  {
-    if (windowIsActive) {
+- (void)deactivateWindow:(double)duration {
+    if (switcherWindowIsActive || activatorWindowIsActive) {
         [UIView animateWithDuration:duration animations: ^ {
             [self.window setAlpha:0];
             [self.window setTransform:CGAffineTransformIdentity];
@@ -497,8 +469,70 @@ GRGestureController *sharedInstance;
         }
 
         self.prevKeyWindow = nil;
-        windowIsActive = NO;
     }
+}
+
+- (void)showSwitcherWindow:(double)duration {
+    SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+
+    int gestureCount = 0;
+    for (NSDictionary *gesture in [self.gestures allValues]) {
+        if ([gesture objectForKey:@"templates"]) {
+            gestureCount++;
+        }
+    }
+
+    BOOL shouldShow = ([[self.settingsDict objectForKey:@"switcherEnabled"] boolValue] && !switcherWindowIsActive && !activatorWindowIsActive && (gestureCount > 0));
+
+    if (activatorWindowIsActive || shouldShow) {
+
+        UIWindow *blockingWindow = MSHookIvar<UIWindow *>(uiController, "_blockingWindow");
+        blockingWindow.hidden = YES;
+
+        CGAffineTransform windowTransform;
+        if ([uiController isSwitcherShowing]) {
+            int switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
+            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation];
+        }
+
+        if (shouldShow) {
+            [self activateWindow:duration transform:windowTransform];
+        } else if (activatorWindowIsActive) {
+            activatorWindowIsActive = NO;
+
+            [UIView animateWithDuration:duration animations: ^ {
+                [self.window setTransform:windowTransform];
+            }];
+        }
+
+        switcherWindowIsActive = YES;
+    }
+}
+
+- (void)updateSwitcherWindow:(double)duration orientation:(int)newOrientation {
+    if (switcherWindowIsActive) {
+
+        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+
+        CGAffineTransform windowTransform;
+        if ([uiController isSwitcherShowing]) {
+            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+        }
+
+        [UIView animateWithDuration:duration animations: ^ {
+            [self.window setTransform:windowTransform];
+         }];
+    }
+}
+
+- (void)hideSwitcherWindow:(double)duration  {
+    if (!switcherWindowIsActive)
+        return;
+
+    [self deactivateWindow:duration];
+    switcherWindowIsActive = NO;
 }
 
 @end
