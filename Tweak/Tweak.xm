@@ -18,24 +18,30 @@
 // iOS 4.0-4.3
 - (BOOL)_revealSwitcher:(double)duration {
     BOOL orig = %orig;
-    GRGestureController *gestureController = [GRGestureController sharedInstance];
-    [gestureController showSwitcherWindow:duration];
+    if (orig) {
+        GRGestureController *gestureController = [GRGestureController sharedInstance];
+        [gestureController showSwitcherWindow:duration];
+    }
     return orig;
 }
 
 // iOS 4.3
 - (BOOL)_revealSwitcher:(double)duration appOrientation:(int)orientation switcherOrientation:(int)orientation3 {
     BOOL orig = %orig;
-    GRGestureController *gestureController = [GRGestureController sharedInstance];
-    [gestureController showSwitcherWindow:duration];
+    if (orig) {
+        GRGestureController *gestureController = [GRGestureController sharedInstance];
+        [gestureController showSwitcherWindow:duration];
+    }
     return orig;
 }
 
 // iOS 5
 - (BOOL)_revealShowcase:(id)showcase duration:(double)duration from:(id)from to:(id)to {
     BOOL orig = %orig;
-    GRGestureController *gestureController = [GRGestureController sharedInstance];
-    [gestureController showSwitcherWindow:duration];
+    if (orig) {
+        GRGestureController *gestureController = [GRGestureController sharedInstance];
+        [gestureController showSwitcherWindow:duration];
+    }
     return orig;
 }
 
