@@ -439,7 +439,6 @@ GRGestureController *sharedInstance;
 
 - (void)activator:(LAActivator *)activator abortEvent:(LAEvent *)event {
     [self deactivateWindow:0.25f];
-    activatorWindowIsActive = NO;
 }
 
 - (void)activateWindow:(double)duration transform:(CGAffineTransform)transform {
@@ -488,6 +487,9 @@ GRGestureController *sharedInstance;
         }
 
         self.prevKeyWindow = nil;
+
+        switcherWindowIsActive = NO;
+        activatorWindowIsActive = NO;
     }
 }
 
@@ -531,8 +533,9 @@ GRGestureController *sharedInstance;
                 }
 
                 windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation]; // iOS 4.0 incompatibility
+            } else {
+                windowTransform = CGAffineTransformMakeTranslation(0, -94);
             }
-            // HOW TO GET TRANSFORM FOR iOS 4??
         }
 
         [self activateWindow:duration transform:windowTransform];
@@ -565,8 +568,9 @@ GRGestureController *sharedInstance;
                 }
 
                 windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+            } else {
+                windowTransform = CGAffineTransformMakeTranslation(0, -94);
             }
-            // HOW TO GET TRANSFORM FOR iOS 4??
         }
 
         self.gestureRecognizer.orientation = newOrientation;
@@ -582,7 +586,7 @@ GRGestureController *sharedInstance;
         return;
 
     [self deactivateWindow:duration];
-    switcherWindowIsActive = NO;
+
 }
 
 @end

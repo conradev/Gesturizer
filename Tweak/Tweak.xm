@@ -73,6 +73,18 @@
     %orig;
 }
 
+// iOS 4.0-4.1?
+- (void)lock:(BOOL)lock {
+    [[GRGestureController sharedInstance] deactivateWindow:0.0f];
+    %orig;
+}
+
+// iOS 4.0-4.1?
+- (void)lock:(BOOL)lock disableLockSound:(BOOL)sound {
+    [[GRGestureController sharedInstance] deactivateWindow:0.0f];
+    %orig;
+}
+
 // iOS 4.0-4.3
 - (void)lockWithType:(int)type {
     [[GRGestureController sharedInstance] deactivateWindow:0.0f];
