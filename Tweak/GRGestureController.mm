@@ -7,10 +7,6 @@ extern "C" {
     #import "GRGestureRecognitionFunctions.h"
 }
 
-@interface SBUIController (Gesturizer)
--(CGAffineTransform)_portraitViewTransformForSwitcherSize:(CGSize)switcherSize orientation:(int)orientation;
-@end
-
 GRGestureController *sharedInstance;
 
 @implementation GRGestureController
@@ -276,8 +272,12 @@ GRGestureController *sharedInstance;
     }
 
     if (switcherWindowIsActive) {
-       SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
-       [uiController dismissSwitcher];
+        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+        if ([uiController respondsToSelector:@selector(dismissSwitcherAnimated:)]) {
+            [uiController dismissSwitcherAnimated:YES];
+        } else {
+            [uiController dismissSwitcher];
+        }
     } else if (activatorWindowIsActive) {
         [self deactivateWindow:0.25f];
         activatorWindowIsActive = NO;
@@ -295,19 +295,23 @@ GRGestureController *sharedInstance;
         LAEvent *gestureEvent = [LAEvent eventWithName:eventName mode:[activator currentEventMode]];
         gestureEvent.handled = NO;
 
+        [activator sendEventToListener:gestureEvent];
+
+        /*
         NSString *listenerName = nil;
         if ((listenerName = [activator assignedListenerNameForEvent:gestureEvent])) {
-            [activator sendEventToListener:gestureEvent];
+
             return gestureEvent.handled;
         }
 
         return NO;
+        */
 
     } else if ([action isEqualToString:@"url"]) {
         NSURL *url = [NSURL URLWithString:[gesture objectForKey:@"url"]];
-        SpringBoard *springboard = [objc_getClass("SpringBoard") sharedApplication];
+        SpringBoard *springboard = (SpringBoard *)[objc_getClass("SpringBoard") sharedApplication];
         if ([springboard applicationCanOpenURL:url publicURLsOnly:NO]) {
-            [springboard applicationOpenURL:url publicURLsOnly:NO];
+            [springboard applicationOpenURL:url];
             return YES;
         }
 
@@ -449,11 +453,11 @@ GRGestureController *sharedInstance;
         self.gestureRecognizer.delaysTouchesBegan = NO;
         self.gestureRecognizer.delaysTouchesEnded = NO;
         self.gestureRecognizer.gestures = [self.gestures allValues];
-        self.gestureRecognizer.orientation = [[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
+        self.gestureRecognizer.orientation = [(SpringBoard *)[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
 
         CGRect screenFrame = [[UIScreen mainScreen] bounds];
         self.window = [[[GRWindow alloc] initWithFrame:screenFrame] autorelease];
-        [self.window setWindowLevel:UIWindowLevelAlert];
+        [self.window setWindowLevel:UIWindowLevelAlert + 6];
         [self.window addGestureRecognizer:self.gestureRecognizer];
 
         [self.window setHidden:NO];
@@ -488,7 +492,6 @@ GRGestureController *sharedInstance;
 }
 
 - (void)showSwitcherWindow:(double)duration {
-    SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
 
     int gestureCount = 0;
     for (NSDictionary *gesture in [self.gestures allValues]) {
@@ -499,27 +502,40 @@ GRGestureController *sharedInstance;
 
     BOOL shouldShow = ([[self.settingsDict objectForKey:@"switcherEnabled"] boolValue] && !switcherWindowIsActive && !activatorWindowIsActive && (gestureCount > 0));
 
-    if (activatorWindowIsActive || shouldShow) {
+    if (shouldShow) {
+        SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
 
-        UIWindow *blockingWindow = MSHookIvar<UIWindow *>(uiController, "_blockingWindow");
-        blockingWindow.hidden = YES;
+        SBShowcaseController *showcaseController = nil;
+        if ([uiController respondsToSelector:@selector(showcaseController)]) {
+            showcaseController = [uiController showcaseController];
+        }
 
-        CGAffineTransform windowTransform;
+        UIWindow *blockingWindow = nil;
+        if (!showcaseController) {
+            blockingWindow = MSHookIvar<UIWindow *>(uiController, "_blockingWindow");
+            blockingWindow.hidden = YES;
+        }
+
+        CGAffineTransform windowTransform = CGAffineTransformIdentity;
         if ([uiController isSwitcherShowing]) {
-            int switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
-            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
-            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation];
+            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)]) {
+                int switcherOrientation = 0;
+                CGSize switcherSize = CGSizeMake(0, 0);
+
+                if (showcaseController) {
+                    switcherOrientation = [showcaseController orientation];
+                    switcherSize = [[showcaseController showcase] view].frame.size;
+                } else {
+                    switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
+                    switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+                }
+
+                windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation]; // iOS 4.0 incompatibility
+            }
+            // HOW TO GET TRANSFORM FOR iOS 4??
         }
 
-        if (shouldShow) {
-            [self activateWindow:duration transform:windowTransform];
-        } else if (activatorWindowIsActive) {
-            activatorWindowIsActive = NO;
-
-            [UIView animateWithDuration:duration animations: ^ {
-                [self.window setTransform:windowTransform];
-            }];
-        }
+        [self activateWindow:duration transform:windowTransform];
 
         switcherWindowIsActive = YES;
     }
@@ -530,11 +546,30 @@ GRGestureController *sharedInstance;
 
         SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
 
+        SBShowcaseController *showcaseController = nil;
+        if ([uiController respondsToSelector:@selector(showcaseController)]) {
+            showcaseController = [uiController showcaseController];
+        }
+
         CGAffineTransform windowTransform;
         if ([uiController isSwitcherShowing]) {
-            CGSize switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
-            windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+
+
+            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)]) {
+                CGSize switcherSize = CGSizeMake(0, 0);
+
+                if (showcaseController) {
+                    switcherSize = [[showcaseController showcase] view].frame.size;
+                } else {
+                    switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+                }
+
+                windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+            }
+            // HOW TO GET TRANSFORM FOR iOS 4??
         }
+
+        self.gestureRecognizer.orientation = newOrientation;
 
         [UIView animateWithDuration:duration animations: ^ {
             [self.window setTransform:windowTransform];

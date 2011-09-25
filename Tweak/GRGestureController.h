@@ -1,5 +1,4 @@
 #import <AppSupport/AppSupport.h>
-#import <SpringBoard/SpringBoard.h>
 
 #import <libactivator/libactivator.h>
 
@@ -7,6 +6,33 @@
 
 #import "GRWindow.h"
 #import "GRGestureRecognizer.h"
+
+@interface SpringBoard : UIApplication
+- (int)activeInterfaceOrientation;
+- (BOOL)applicationCanOpenURL:(id)url publicURLsOnly:(BOOL)only;
+- (void)applicationOpenURL:(id)url;
+@end
+
+@interface SBShowcaseViewController : NSObject
+- (UIView *)view;
+@end
+
+@interface SBShowcaseController : NSObject
+- (SBShowcaseViewController *)showcase;
+- (UIControl *)blockingView;
+- (int)orientation;
+@end
+
+@interface SBUIController : NSObject
++ (SBUIController *)sharedInstance;
+
+- (UIWindow *)window;
+- (SBShowcaseController *)showcaseController;
+- (BOOL)isSwitcherShowing;
+- (void)dismissSwitcherAnimated:(BOOL)animated;
+- (void)dismissSwitcher;
+- (CGAffineTransform)_portraitViewTransformForSwitcherSize:(CGSize)switcherSize orientation:(int)orientation;
+@end
 
 @interface GRGestureController : NSObject <LAListener, LAEventDataSource> {
     GRWindow *_window;
