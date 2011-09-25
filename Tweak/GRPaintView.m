@@ -17,7 +17,7 @@
 
 - (void)drawRect:(CGRect)rect {
     [brushPattern setStroke];
-    [drawPath strokeWithBlendMode:kCGBlendModeDestinationAtop alpha:1.0f];
+    [drawPath strokeWithBlendMode:kCGBlendModeNormal alpha:1.0f];
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {

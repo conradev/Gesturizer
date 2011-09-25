@@ -7,6 +7,8 @@
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [UIColor darkGrayColor];
+        self.alpha = 1.0f;
+
         strokes = [[[NSMutableArray alloc] init] retain];
         waitTimer = nil;
     }
