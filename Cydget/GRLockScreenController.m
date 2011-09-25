@@ -32,10 +32,16 @@
 
     if ([self.gestureRecognizer.sortedResults count] > 0) {
         NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
-        [gestureController performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.4f];
+        [gestureController performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.25f];
     }
 
     self.gestureRecognizer.sortedResults = nil;
+
+    for (NSDictionary *statGesture in self.gestureRecognizer.gestures) {
+        NSMutableDictionary *gesture = [NSMutableDictionary dictionaryWithDictionary:statGesture];
+        [gesture removeObjectForKey:@"score"];
+    }
+
     [self.view setFrame:self.view.frame];
 }
 

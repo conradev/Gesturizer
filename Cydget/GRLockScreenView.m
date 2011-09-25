@@ -16,7 +16,7 @@
 }
 
 - (void)setAlpha:(float)alpha {
-    [super setAlpha:(alpha * 0.45)];
+    [super setAlpha:(alpha * 0.70)];
 }
 
 - (void)dealloc {
@@ -33,10 +33,9 @@
         return;
     }
 
-    [UIView animateWithDuration:.5 animations: ^ { [self.paintView setAlpha:0]; } completion: ^ (BOOL finished) {
+    [UIView animateWithDuration:.25f animations: ^ { [self.paintView setAlpha:0]; } completion: ^ (BOOL finished) {
             [self.paintView removeFromSuperview];
             self.paintView = [[[$GRPaintView alloc] initWithFrame:frame] autorelease];
-            self.paintView.backgroundColor = [UIColor clearColor];
             [self addSubview:self.paintView];
         }];
 
@@ -47,6 +46,8 @@
             }
 
             gestureRecognizer.waitTimer = nil;
+
+            [gestureRecognizer.points removeAllObjects];
         }
     }
 }

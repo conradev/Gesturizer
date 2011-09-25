@@ -266,7 +266,7 @@ GRGestureController *sharedInstance;
     NSDictionary *gesture = [self.gestureRecognizer.sortedResults objectAtIndex:0];
     self.gestureRecognizer.sortedResults = nil;
 
-    for (NSDictionary *statGesture in [self.gestures allValues]) {
+    for (NSDictionary *statGesture in self.gestureRecognizer.gestures) {
         NSMutableDictionary *gesture = [NSMutableDictionary dictionaryWithDictionary:statGesture];
         [gesture removeObjectForKey:@"score"];
     }
@@ -462,7 +462,7 @@ GRGestureController *sharedInstance;
         [self.window setHidden:NO];
         [self.window makeKeyAndVisible];
         [UIView animateWithDuration:duration animations: ^ {
-            [self.window setAlpha:0.45];
+            [self.window setAlpha:0.70];
             [self.window setTransform:transform];
          }];
      }

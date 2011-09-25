@@ -2,7 +2,7 @@
 # Main Makefile for Gesturizer #
 ################################
 
-SUBPROJECTS = Tweak PreferenceBundle
+SUBPROJECTS = Tweak PreferenceBundle Cydget
 
 include theos/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk
