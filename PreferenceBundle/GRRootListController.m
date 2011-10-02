@@ -45,7 +45,11 @@ GRRootListController *sharedInstance = nil;
             }
         }
 
-        gestureSpecifiers = [mutGestureSpecs copy];
+        gestureSpecifiers = [[mutGestureSpecs sortedArrayUsingComparator: ^(id obj1, id obj2) {
+
+            return [[[obj1 propertyForKey:@"gesture"] objectForKey:@"name"] localizedCaseInsensitiveCompare:[[obj2 propertyForKey:@"gesture"] objectForKey:@"name"]];
+
+        }] copy];
 
         NSIndexSet *specifierIndexes = nil;
         for (PSSpecifier *spec in mutSpecs) {
@@ -98,6 +102,12 @@ GRRootListController *sharedInstance = nil;
             [newSpecifiers addObject:gestureSpecifier];
         }
     }
+
+    newSpecifiers = [NSMutableArray arrayWithArray:[newSpecifiers sortedArrayUsingComparator: ^(id obj1, id obj2) {
+
+        return [[[obj1 propertyForKey:@"gesture"] objectForKey:@"name"] localizedCaseInsensitiveCompare:[[obj2 propertyForKey:@"gesture"] objectForKey:@"name"]];
+
+    }]];
 
     if ([gestureSpecifiers count] > 0 && [newSpecifiers count] > 0) {
         [self replaceContiguousSpecifiers:gestureSpecifiers withSpecifiers:newSpecifiers];
