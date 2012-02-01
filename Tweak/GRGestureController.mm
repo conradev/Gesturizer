@@ -1,7 +1,7 @@
 #import "GRGestureController.h"
 
-#import <notify.h>
-#import <substrate.h>
+#include <notify.h>
+#include <substrate.h>
 
 extern "C" {
     #import "GRGestureRecognitionFunctions.h"

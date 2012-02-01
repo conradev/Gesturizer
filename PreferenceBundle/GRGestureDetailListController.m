@@ -117,7 +117,7 @@
 }
 
 - (void)recordGesture:(PSSpecifier *)spec {
-    for (UITableCell *cell in [_cells allValues]) {
+    for (UITableViewCell *cell in [_cells allValues]) {
         if ([cell respondsToSelector:@selector(resignFirstResponder)]) {
             [cell resignFirstResponder];
         }

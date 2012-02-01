@@ -38,7 +38,7 @@ GRRootListController *sharedInstance = nil;
         NSMutableArray *mutGestureSpecs = [NSMutableArray array];
 
         for (NSDictionary *gesture in [self.gestures allValues]) {
-            PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:Nil];
+            PSSpecifier *gestureSpecifier = [PSSpecifier preferenceSpecifierNamed:[gesture objectForKey:@"name"] target:self set:NULL get:NULL detail:[GRGestureDetailListController class] cell:PSLinkCell edit:nil];
             if (gestureSpecifier) {
                 [gestureSpecifier setProperty:gesture forKey:@"gesture"];
                 [mutGestureSpecs addObject:gestureSpecifier];

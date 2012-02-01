@@ -1,5 +1,9 @@
 #import "GRDeleteButtonView.h"
 
+@interface UIButton (Private)
+- (void)_setupTitleView;
+@end
+
 @implementation GRDeleteButtonView
 
 - (id)initWithSpecifier:(PSSpecifier *)specifier {
@@ -13,6 +17,7 @@
         pressedImage = [pressedImage stretchableImageWithLeftCapWidth:floorf(pressedImage.size.width/2) topCapHeight:floorf(pressedImage.size.height/2)];
 
         _deleteButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
+        _deleteButton.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         [_deleteButton setBackgroundImage:buttonImage forState:UIControlStateNormal];
         [_deleteButton setBackgroundImage:pressedImage forState:UIControlStateHighlighted];
         [_deleteButton setTitle:@"Delete Gesture" forState:UIControlStateNormal];
@@ -50,6 +55,7 @@
     else if (self.bounds.size.width == 480.0f)
         width = 462.0f;
     [_deleteButton setFrame:CGRectMake(((self.frame.size.width - width) / 2), 0, width, 43)];
+
 }
 
 - (float)preferredHeightForWidth:(float)width {
