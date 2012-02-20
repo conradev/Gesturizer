@@ -11,7 +11,7 @@ GRGestureController *sharedInstance;
 
 @implementation GRGestureController
 
-@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer, settingsDict=_settingsDict, prevKeyWindow=_prevKeyWindow;
+@synthesize window=_window, gestures=_gestures, gestureRecognizer=_gestureRecognizer, tapRecognizer=_tapRecognizer, settingsDict=_settingsDict, prevKeyWindow=_prevKeyWindow;
 
 + (GRGestureController *)sharedInstance {
     if (!sharedInstance) {
@@ -89,6 +89,7 @@ GRGestureController *sharedInstance;
 
 - (void)dealloc {
     self.gestureRecognizer = nil;
+    self.tapRecognizer = nil;
     self.window = nil;
     self.gestures = nil;
     self.settingsDict = nil;
@@ -286,6 +287,22 @@ GRGestureController *sharedInstance;
     [self performSelector:@selector(executeActionForGesture:) withObject:gesture afterDelay:0.25f];
 }
 
+- (void)tapGestureRecognized:(UITapGestureRecognizer *)tapRecognizer {
+    if ([tapRecognizer isEqual:self.tapRecognizer]) {
+        if (switcherWindowIsActive) {
+            SBUIController *uiController = [objc_getClass("SBUIController") sharedInstance];
+            if ([uiController respondsToSelector:@selector(dismissSwitcherAnimated:)]) {
+                [uiController dismissSwitcherAnimated:YES];
+            } else {
+                [uiController dismissSwitcher];
+            }
+        } else if (activatorWindowIsActive) {
+            [self deactivateWindow:0.25f];
+            activatorWindowIsActive = NO;
+        }
+    }
+}
+
 - (BOOL)executeActionForGesture:(NSDictionary *)gesture {
     NSString *action = [gesture objectForKey:@"action"];
     if ([action isEqualToString:@"activator"]) {
@@ -447,18 +464,27 @@ GRGestureController *sharedInstance;
 
         self.prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
-        self.gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
-        self.gestureRecognizer.cancelsTouchesInView = NO;
-        self.gestureRecognizer.delaysTouchesBegan = NO;
-        self.gestureRecognizer.delaysTouchesEnded = NO;
-        self.gestureRecognizer.gestures = [self.gestures allValues];
-        self.gestureRecognizer.orientation = [(SpringBoard *)[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
-
+        GRGestureRecognizer *gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
+        gestureRecognizer.cancelsTouchesInView = NO;
+        gestureRecognizer.delaysTouchesBegan = NO;
+        gestureRecognizer.delaysTouchesEnded = NO;
+        gestureRecognizer.gestures = [self.gestures allValues];
+        gestureRecognizer.orientation = [(SpringBoard *)[objc_getClass("SpringBoard") sharedApplication] activeInterfaceOrientation];
+        
+        self.gestureRecognizer = gestureRecognizer;
+        
+        UITapGestureRecognizer *tapRecognizer = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGestureRecognized:)] autorelease];
+        
+        self.tapRecognizer = tapRecognizer;
+        
+        [self.gestureRecognizer requireGestureRecognizerToFail:self.tapRecognizer];
+        
         CGRect screenFrame = [[UIScreen mainScreen] bounds];
         self.window = [[[GRWindow alloc] initWithFrame:screenFrame] autorelease];
         [self.window setWindowLevel:UIWindowLevelAlert + 6];
         [self.window addGestureRecognizer:self.gestureRecognizer];
-
+        [self.window addGestureRecognizer:self.tapRecognizer];
+        
         [self.window setHidden:NO];
         [self.window makeKeyAndVisible];
         [UIView animateWithDuration:duration animations: ^ {
@@ -477,6 +503,7 @@ GRGestureController *sharedInstance;
             [self.window setHidden:YES];
             self.window = nil;
             self.gestureRecognizer = nil;
+            self.tapRecognizer = nil;
         }];
 
         if (self.prevKeyWindow.hidden) {

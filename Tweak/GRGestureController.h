@@ -51,7 +51,8 @@
 @interface GRGestureController : NSObject <LAListener, LAEventDataSource> {
     GRWindow *_window;
     GRGestureRecognizer *_gestureRecognizer;
-
+    UITapGestureRecognizer *_tapRecognizer;
+    
     BOOL switcherWindowIsActive;
     BOOL activatorWindowIsActive;
 
@@ -68,6 +69,7 @@
 @property (nonatomic, retain) GRWindow *window;
 @property (nonatomic, retain) UIWindow *prevKeyWindow;
 @property (nonatomic, retain) GRGestureRecognizer *gestureRecognizer;
+@property (nonatomic, retain) UITapGestureRecognizer *tapRecognizer;
 @property (nonatomic, retain) NSMutableDictionary *settingsDict;
 @property (nonatomic, retain) NSMutableDictionary *gestures;
 
