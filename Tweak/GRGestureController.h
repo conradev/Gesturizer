@@ -1,8 +1,8 @@
 #import <AppSupport/AppSupport.h>
-
 #import <libactivator/libactivator.h>
-
 #import <objc/runtime.h>
+
+#import "GRATracker.h"
 
 #import "GRWindow.h"
 #import "GRGestureRecognizer.h"

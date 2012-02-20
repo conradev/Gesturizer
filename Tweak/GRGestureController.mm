@@ -35,9 +35,12 @@ GRGestureController *sharedInstance;
         [messagingCenter runServerOnCurrentThread];
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(memoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
-
+        
         _asyncQueue = [[NSOperationQueue alloc] init];
-
+        
+        // Initialize Google Analytics tracker
+        [[GRATracker sharedTracker] startTrackerWithAccountID:@"UA-25635847-4" dispatchPeriod:1 delegate:nil];
+        
         BOOL isDefault = NO;
         self.settingsDict = [NSMutableDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.plist"];
 
@@ -433,6 +436,10 @@ GRGestureController *sharedInstance;
         if (gestureCount < 1) {
             // POP AN ALERT!!!!!!!
         }
+        
+        // Set page level variable for activation method
+        NSError *error;
+        [[GRATracker sharedTracker] setCustomVariableAtIndex:4 name:@"event" value:event.name scope:kGRAPageScope withError:&error];
 
         [self activateWindow:0.25f transform:CGAffineTransformIdentity];
         activatorWindowIsActive = YES;
@@ -461,7 +468,11 @@ GRGestureController *sharedInstance;
 - (void)activateWindow:(double)duration transform:(CGAffineTransform)transform {
     if (!switcherWindowIsActive && !activatorWindowIsActive) {
         [_asyncQueue waitUntilAllOperationsAreFinished];
-
+        
+        // Track activation
+        NSError *error;
+        [[GRATracker sharedTracker] trackPageview:@"/activate" withError:&error];
+        
         self.prevKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
         GRGestureRecognizer *gestureRecognizer = [[[GRGestureRecognizer alloc] initWithTarget:self action:@selector(gestureWasRecognized:)] autorelease];
@@ -569,7 +580,11 @@ GRGestureController *sharedInstance;
         } else {
             return;
         }
-
+        
+        // Set page level variable for activation method
+        NSError *error;
+        [[GRATracker sharedTracker] setCustomVariableAtIndex:4 name:@"event" value:@"org.thebigboss.gesturizer.switcher" scope:kGRAPageScope withError:&error];
+        
         [self activateWindow:duration transform:windowTransform];
 
         switcherWindowIsActive = YES;

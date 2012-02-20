@@ -1,14 +1,42 @@
 #import "GRGestureController.h"
 
-@interface SBUIController (iOS5)
-- (float)_appSwitcherRevealAnimationDelay;
-@end
+#include <sys/types.h>
+#include <sys/sysctl.h>
 
 %hook SpringBoard
 
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
+    
     [GRGestureController sharedInstance];
+    
+    NSError *error;
+    
+    // Get device platform
+    size_t size;
+    sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+    char *machine = (char *)malloc(size);
+    sysctlbyname("hw.machine", machine, &size, NULL, 0);
+    NSString *platform = [NSString stringWithCString:machine encoding:NSUTF8StringEncoding];
+    free(machine);
+    
+    // Get device version
+    NSString *version = [[UIDevice currentDevice] systemVersion];
+    
+    // Set custom variables
+    GRATracker *tracker = [GRATracker sharedTracker];
+    [tracker setCustomVariableAtIndex:1 name:@"platform" value:platform scope:kGRAVisitorScope withError:&error];
+    [tracker setCustomVariableAtIndex:2 name:@"ios_version" value:version scope:kGRAVisitorScope withError:&error];
+    [tracker setCustomVariableAtIndex:3 name:@"package_version" value:@"1.0.2-1" scope:kGRAVisitorScope withError:&error];
+}
+
+%end
+
+%hook GRAPersistentHitStore
+
+- (id)initWithHitBuilder:(id)hitBuilder path:(id)path {
+    // Store Google Analytics data in Preferences directory
+    return %orig(hitBuilder, @"/var/mobile/Library/Preferences/org.thebigboss.gesturizer.sqlite");
 }
 
 %end
