@@ -1,7 +1,7 @@
 Package: org.thebigboss.gesturizer
 Name: Gesturizer
 Depends: gsc.armv7, mobilesubstrate (>= 0.9.3228), preferenceloader (>= 2.0.2), libactivator (>= 1.5.0), firmware (>= 4.0)
-Version: 1.0.1
+Version: 1.0.2
 Description: Custom gesture recognition for iOS
 Homepage: http://kramerapps.com/cydia/gesturizer/
 Depiction: http://kramerapps.com/cydia/gesturizer/
