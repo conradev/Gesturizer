@@ -520,22 +520,27 @@ GRGestureController *sharedInstance;
 
         CGAffineTransform windowTransform = CGAffineTransformIdentity;
         if ([uiController isSwitcherShowing]) {
-            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)]) {
+            
+            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)] || showcaseController) {
                 int switcherOrientation = 0;
                 CGSize switcherSize = CGSizeMake(0, 0);
 
                 if (showcaseController) {
-                    switcherOrientation = [showcaseController orientation];
-                    switcherSize = [[showcaseController showcase] view].frame.size;
+                    float bottomBarHeight = [showcaseController bottomBarHeight];
+                    SBShowcaseContext *context = [uiController _showcaseContextForOffset:bottomBarHeight];
+                    windowTransform = [context portraitRelativeViewTransform];
                 } else {
                     switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
                     switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+                    windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation]; // iOS 4.0 incompatibility
                 }
 
-                windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation]; // iOS 4.0 incompatibility
             } else {
                 windowTransform = CGAffineTransformMakeTranslation(0, -94);
             }
+            
+        } else {
+            return;
         }
 
         [self activateWindow:duration transform:windowTransform];
@@ -556,18 +561,20 @@ GRGestureController *sharedInstance;
 
         CGAffineTransform windowTransform;
         if ([uiController isSwitcherShowing]) {
-
-
-            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)]) {
+            if ([uiController respondsToSelector:@selector(_portraitViewTransformForSwitcherSize:orientation:)] || showcaseController) {
+                int switcherOrientation = 0;
                 CGSize switcherSize = CGSizeMake(0, 0);
-
+                
                 if (showcaseController) {
-                    switcherSize = [[showcaseController showcase] view].frame.size;
+                    float bottomBarHeight = [showcaseController bottomBarHeight];
+                    SBShowcaseContext *context = [uiController _showcaseContextForOffset:bottomBarHeight];
+                    windowTransform = [context portraitRelativeViewTransform];
                 } else {
+                    switcherOrientation = MSHookIvar<int>(uiController, "_switcherOrientation");
                     switcherSize = MSHookIvar<UIView *>(uiController, "_switcherView").frame.size;
+                    windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:switcherOrientation]; // iOS 4.0 incompatibility
                 }
-
-                windowTransform = [uiController _portraitViewTransformForSwitcherSize:switcherSize orientation:newOrientation];
+                
             } else {
                 windowTransform = CGAffineTransformMakeTranslation(0, -94);
             }

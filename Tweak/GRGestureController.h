@@ -13,6 +13,16 @@
 - (void)applicationOpenURL:(id)url;
 @end
 
+@interface SBShowcaseContext : NSObject
+@property(nonatomic) int appOrientation; // @synthesize appOrientation=_appOrientation;
+@property(nonatomic) struct CGAffineTransform currentReleativeViewTransform; // @synthesize currentReleativeViewTransform=_currentReleativeViewTransform;
+@property(nonatomic) float offset; // @synthesize offset=_offset;
+@property(nonatomic) BOOL onApp; // @synthesize onApp=_onApp;
+@property(nonatomic) BOOL onSpringBoard; // @synthesize onSpringBoard=_onSpringBoard;
+@property(nonatomic) struct CGAffineTransform portraitRelativeViewTransform; // @synthesize portraitRelativeViewTransform=_portraitRelativeViewTransform;
+@property(nonatomic) int showcaseOrientation; // @synthesize showcaseOrientation=_showcaseOrientation;
+@end
+
 @interface SBShowcaseViewController : NSObject
 - (UIView *)view;
 @end
@@ -20,14 +30,18 @@
 @interface SBShowcaseController : NSObject
 - (SBShowcaseViewController *)showcase;
 - (UIControl *)blockingView;
+- (float)bottomBarHeight;
 - (int)orientation;
 @end
 
 @interface SBUIController : NSObject
 + (SBUIController *)sharedInstance;
 
-- (UIWindow *)window;
+// iOS 5 only
 - (SBShowcaseController *)showcaseController;
+- (SBShowcaseContext *)_showcaseContextForOffset:(float)offset;
+
+- (UIWindow *)window;
 - (BOOL)isSwitcherShowing;
 - (void)dismissSwitcherAnimated:(BOOL)animated;
 - (void)dismissSwitcher;
