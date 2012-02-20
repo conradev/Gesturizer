@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:Makefile">
+   </FileRef>
+   <Group
+      location = "group:Cydget"
+      name = "Cydget">
+      <FileRef
+         location = "group:Makefile">
+      </FileRef>
+      <FileRef
+         location = "group:GRLockScreenController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRLockScreenController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRLockScreenView.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRLockScreenView.m">
+      </FileRef>
+   </Group>
+   <Group
+      location = "group:PreferenceBundle"
+      name = "PreferenceBundle">
+      <FileRef
+         location = "group:Makefile">
+      </FileRef>
+      <FileRef
+         location = "group:GRConfigureActivatorController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRConfigureActivatorController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRDeleteButtonView.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRDeleteButtonView.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureDetailListController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureDetailListController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecordingView.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecordingView.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecordingViewController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecordingViewController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRNewGestureListController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRNewGestureListController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRNewGestureSetupController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRNewGestureSetupController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRPaintView.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRPaintView.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRRootListController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRRootListController.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRWebSettingsController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRWebSettingsController.m">
+      </FileRef>
+   </Group>
+   <Group
+      location = "group:Tweak"
+      name = "Tweak">
+      <FileRef
+         location = "group:Makefile">
+      </FileRef>
+      <FileRef
+         location = "group:Tweak.xm">
+      </FileRef>
+      <FileRef
+         location = "group:Gesturizer.plist">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureController.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureController.mm">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecognitionFunctions.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecognitionFunctions.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecognizer.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRGestureRecognizer.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRPaintView.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRPaintView.m">
+      </FileRef>
+      <FileRef
+         location = "group:GRWindow.h">
+      </FileRef>
+      <FileRef
+         location = "group:GRWindow.m">
+      </FileRef>
+   </Group>
+</Workspace>
