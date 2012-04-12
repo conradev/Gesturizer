@@ -2,12 +2,9 @@
 ._*
 .DS_Store
 *.deb
-Common.h
 *.dylib
+*.mov
 _
 obj
-.debmake
-Icon*
 .theos
-*.bak
-*.save
+xcuserdata
